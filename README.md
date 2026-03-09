@@ -1,6 +1,6 @@
-#  Notes Management API
+# Notes Management API
 
-> A production-ready RESTful API for managing personal notes with **JWT authentication** and **Role-Based Access Control**.
+> A RESTful API for managing personal notes with **JWT authentication** and **Role-Based Access Control**.
 
 ![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
@@ -9,12 +9,13 @@
 
 ---
 
-##  Setup
+## Setup
 
 ### 1. Install Docker
 
-Download and install Docker Desktop from [https://www.docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop). It takes under a minute — no other dependencies needed.
-Make sure you docker engine is running
+Download and install Docker Desktop from [https://www.docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop). It takes under a minute — no other dependencies needed. Make sure your Docker engine is running before proceeding.
+
+> PostgreSQL comes bundled — Docker spins it up automatically. You do not need to install it separately.
 
 ### 2. Clone the repository
 
@@ -47,7 +48,7 @@ ADMIN_SECRET=your_admin_bootstrap_secret
 - Must stay consistent across restarts — do not auto-generate it on startup
 - Must never be committed to GitHub
 
-Generate one with:
+Generate one by running this in your terminal:
 
 ```bash
 python -c "import secrets; print(secrets.token_hex(32))"
@@ -57,7 +58,7 @@ Paste the output directly into your `.env` as the `SECRET_KEY` value.
 
 ---
 
-##  Running the Application
+## Running the Application
 
 ```bash
 docker compose up --build
@@ -72,7 +73,7 @@ docker compose up --build
 
 ---
 
-##  Authentication
+## Authentication
 
 ### Register
 
@@ -81,6 +82,18 @@ curl -X POST http://localhost:8000/users/register \
   -H "Content-Type: application/json" \
   -d '{"username": "karthik", "password": "secret123"}'
 ```
+
+**Response:**
+
+```json
+{
+  "id": 1,
+  "username": "karthik",
+  "role": "user"
+}
+```
+
+---
 
 ### Login
 
@@ -103,7 +116,7 @@ curl -X POST http://localhost:8000/users/login \
 
 ---
 
-##  Creating Notes
+## Creating Notes
 
 ```bash
 curl -X POST http://localhost:8000/notes \
@@ -116,19 +129,18 @@ curl -X POST http://localhost:8000/notes \
 
 ```json
 {
-  "success": true,
-  "data": {
-    "id": 1,
-    "title": "Meeting Notes",
-    "content": "Discuss project milestones.",
-    "owner_id": 1
-  }
+  "id": 1,
+  "title": "Meeting Notes",
+  "content": "Discuss project milestones.",
+  "owner_id": 1,
+  "user_note_number": 1,
+  "created_at": "2026-03-09T16:27:59.569733+05:30"
 }
 ```
 
 ---
 
-##  Managing Notes
+## Managing Notes
 
 ### Get All Notes
 
@@ -136,6 +148,31 @@ curl -X POST http://localhost:8000/notes \
 curl http://localhost:8000/notes \
   -H "Authorization: Bearer <your_token>"
 ```
+
+**Response:**
+
+```json
+[
+  {
+    "id": 1,
+    "title": "Meeting Notes",
+    "content": "Discuss project milestones.",
+    "owner_id": 1,
+    "user_note_number": 1,
+    "created_at": "2026-03-09T16:27:59.569733+05:30"
+  },
+  {
+    "id": 2,
+    "title": "Ideas",
+    "content": "New feature brainstorm.",
+    "owner_id": 1,
+    "user_note_number": 2,
+    "created_at": "2026-03-09T17:10:22.123456+05:30"
+  }
+]
+```
+
+---
 
 ### Search & Pagination
 
@@ -150,12 +187,44 @@ curl "http://localhost:8000/notes?page=1&size=10&title=meeting" \
 | `size` | int | Results per page *(default: 10)* |
 | `title` | string | Filter by title keyword |
 
+**Response:**
+
+```json
+[
+  {
+    "id": 1,
+    "title": "Meeting Notes",
+    "content": "Discuss project milestones.",
+    "owner_id": 1,
+    "user_note_number": 1,
+    "created_at": "2026-03-09T16:27:59.569733+05:30"
+  }
+]
+```
+
+---
+
 ### Get Note by ID
 
 ```bash
 curl http://localhost:8000/notes/1 \
   -H "Authorization: Bearer <your_token>"
 ```
+
+**Response:**
+
+```json
+{
+  "id": 1,
+  "title": "Meeting Notes",
+  "content": "Discuss project milestones.",
+  "owner_id": 1,
+  "user_note_number": 1,
+  "created_at": "2026-03-09T16:27:59.569733+05:30"
+}
+```
+
+---
 
 ### Update a Note
 
@@ -166,9 +235,22 @@ curl -X PUT http://localhost:8000/notes/1 \
   -d '{"title": "Updated Title", "content": "Updated content."}'
 ```
 
+**Response:**
+
+```json
+{
+  "id": 1,
+  "title": "Updated Title",
+  "content": "Updated content.",
+  "owner_id": 1,
+  "user_note_number": 1,
+  "created_at": "2026-03-09T16:27:59.569733+05:30"
+}
+```
+
 ---
 
-##  Deleting Notes
+## Deleting Notes
 
 ```bash
 curl -X DELETE http://localhost:8000/notes/1 \
@@ -188,7 +270,7 @@ curl -X DELETE http://localhost:8000/notes/1 \
 
 ---
 
-##  Admin Role
+## Admin Role
 
 ### Capabilities
 
@@ -214,11 +296,36 @@ curl -X POST http://localhost:8000/users/register-admin \
   -d '{"username": "admin", "password": "adminpass123"}'
 ```
 
+**Response:**
+
+```json
+{
+  "id": 2,
+  "username": "admin",
+  "role": "admin"
+}
+```
+
 **Step 3** — Login normally. The token returned carries admin privileges automatically.
+
+```bash
+curl -X POST http://localhost:8000/users/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "adminpass123"}'
+```
+
+**Response:**
+
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer"
+}
+```
 
 ---
 
-##  Edge Cases
+## Edge Cases
 
 | Scenario | Error | Fix |
 |----------|-------|-----|
@@ -231,6 +338,6 @@ curl -X POST http://localhost:8000/users/register-admin \
 
 ---
 
-##  Author
+## Author
 
 **Karthik Valmiki** — [GitHub](https://github.com/Karthik-Valmiki)
