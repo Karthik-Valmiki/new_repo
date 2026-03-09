@@ -11,14 +11,19 @@
 
 ##  Setup
 
-### 1. Clone the repository
+### 1. Install Docker
+
+Download and install Docker Desktop from [https://www.docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop). It takes under a minute — no other dependencies needed.
+Make sure you docker engine is running
+
+### 2. Clone the repository
 
 ```bash
 git clone https://github.com/Karthik-Valmiki/Notes_Management_API.git
 cd Notes_Management_API
 ```
 
-### 2. Configure environment variables
+### 3. Configure environment variables
 
 ```bash
 cp .env.example .env
@@ -27,40 +32,43 @@ cp .env.example .env
 Open `.env` and fill in your values:
 
 ```env
-DATABASE_URL=postgresql://postgres:yourpassword@localhost:5432/notes_db
+DATABASE_URL=postgresql://postgres:yourpassword@db:5432/notes_db
 SECRET_KEY=your_long_hex_secret_key_here
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 ADMIN_SECRET=your_admin_bootstrap_secret
 ```
 
-> Generate a secure `SECRET_KEY`:
-> ```bash
-> python -c "import secrets; print(secrets.token_hex(32))"  
-> ```
-Run the above command in terminal
+#### About `SECRET_KEY`
+
+`SECRET_KEY` is the server-side key used to **sign and verify JWT tokens**. Every token issued by the API is signed with this key — if it changes, all existing tokens become invalid and every logged-in user gets logged out.
+
+- Must be a long, random hex string — never a simple word or phrase
+- Must stay consistent across restarts — do not auto-generate it on startup
+- Must never be committed to GitHub
+
+Generate one with:
+
+```bash
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+Paste the output directly into your `.env` as the `SECRET_KEY` value.
 
 ---
 
-##  Running Locally
-
-### Option 1 — Docker *(Recommended)*
+##  Running the Application
 
 ```bash
 docker compose up --build
-```
-
-### Option 2 — Manual
-
-```bash
-pip install -r requirements.txt
-uvicorn app.main:app --reload
 ```
 
 | | URL |
 |-|-----|
 | **API** | `http://localhost:8000` |
 | **Swagger UI** | `http://localhost:8000/docs` |
+
+> The database starts first — Docker's healthcheck ensures the API only comes up once PostgreSQL is fully ready.
 
 ---
 
@@ -219,7 +227,7 @@ curl -X POST http://localhost:8000/users/register-admin \
 | Expired token | `401 Token has expired` | Login again to get a fresh token |
 | Accessing another user's note | `403 Not authorized` | Users can only access their own notes |
 | Wrong admin secret | `403 Invalid admin secret` | Value in `x-admin-secret` must match `ADMIN_SECRET` in `.env` |
-| `DATABASE_URL` is None on startup | `ArgumentError: Expected string or URL` | Run `cp .env.example .env` and fill in your database credentials |
+| `DATABASE_URL` is None on startup | `ArgumentError: Expected string or URL` | Run `cp .env.example .env` and fill in your credentials |
 
 ---
 
