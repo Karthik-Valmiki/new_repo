@@ -61,6 +61,7 @@ Paste the output directly into your `.env` as the `SECRET_KEY` value.
 ```bash
 docker compose up --build
 ```
+Run the above command in Vs-Code Terminal
 
 | | URL |
 |-|-----|
@@ -76,8 +77,7 @@ docker compose up --build
 ### Register
 
 ```bash
-curl -X POST http://localhost:8000/users/register \
-  -H "Content-Type: application/json" \
+Navigate to `http://localhost:8000/docs`, open the `POST /users/register` endpoint, Go with username, email, password and click **Execute**.
   -d '{"username": "karthik","email":"karthik@gmail.com", "password": "secret123"}'
 ```
 
@@ -97,8 +97,7 @@ curl -X POST http://localhost:8000/users/register \
 ### Login
 
 ```bash
-curl -X POST http://localhost:8000/users/login \
-  -H "Content-Type: application/json" \
+Navigate to `http://localhost:8000/docs`, open the `POST /users/login` endpoint, Go with email, password and click **Execute**.
   -d '{"username": "karthik", "password": "secret123"}'
 ```
 
@@ -119,7 +118,6 @@ curl -X POST http://localhost:8000/users/login \
 
 ```bash
 Navigate to `http://localhost:8000/docs`, open the `POST /notes` endpoint, enter your title and content in the request body and click **Execute**.
-  -H "Content-Type: application/json" \
   -d '{"title": "Meeting Notes", "content": "Discuss project milestones."}'
 ```
 
