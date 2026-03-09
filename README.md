@@ -13,9 +13,8 @@
 
 ### 1. Install Docker
 
-Download and install Docker Desktop from [https://www.docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop). It takes under a minute — no other dependencies needed. Make sure your Docker engine is running before proceeding.
+Download and install Docker Desktop from [https://www.docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop). With Docker no other dependencies needed. Make sure your Docker engine is running before proceeding.
 
-> PostgreSQL comes bundled — Docker spins it up automatically. You do not need to install it separately.
 
 ### 2. Clone the repository
 
@@ -46,7 +45,6 @@ ADMIN_SECRET=your_admin_bootstrap_secret
 
 - Must be a long, random hex string — never a simple word or phrase
 - Must stay consistent across restarts — do not auto-generate it on startup
-- Must never be committed to GitHub
 
 Generate one by running this in your terminal:
 
@@ -80,7 +78,7 @@ docker compose up --build
 ```bash
 curl -X POST http://localhost:8000/users/register \
   -H "Content-Type: application/json" \
-  -d '{"username": "karthik", "password": "secret123"}'
+  -d '{"username": "karthik","email":"karthik@gmail.com", "password": "secret123"}'
 ```
 
 **Response:**
@@ -89,6 +87,7 @@ curl -X POST http://localhost:8000/users/register \
 {
   "id": 1,
   "username": "karthik",
+  "email":"karthik@gmail.com",
   "role": "user"
 }
 ```
@@ -113,14 +112,13 @@ curl -X POST http://localhost:8000/users/login \
 ```
 
 > Use this token as `Authorization: Bearer <your_token>` in all requests below.
-
+> open `http://localhost:8000/docs`, click the **Authorize** button on the top right, and paste your token there — Swagger handles the header automatically for every request.
 ---
 
 ## Creating Notes
 
 ```bash
-curl -X POST http://localhost:8000/notes \
-  -H "Authorization: Bearer <your_token>" \
+Navigate to `http://localhost:8000/docs`, open the `POST /notes` endpoint, enter your title and content in the request body and click **Execute**.
   -H "Content-Type: application/json" \
   -d '{"title": "Meeting Notes", "content": "Discuss project milestones."}'
 ```
@@ -145,12 +143,11 @@ curl -X POST http://localhost:8000/notes \
 ### Get All Notes
 
 ```bash
-curl http://localhost:8000/notes \
-  -H "Authorization: Bearer <your_token>"
+Navigate to `http://localhost:8000/docs`, open the `GET /notes` endpoint and click **Execute**.
 ```
 
 **Response:**
-
+This response shows all notes created so far
 ```json
 [
   {
@@ -171,21 +168,20 @@ curl http://localhost:8000/notes \
   }
 ]
 ```
-
+If your response failed to show the id number 2 then you haven't created yet..
 ---
 
 ### Search & Pagination
 
 ```bash
-curl "http://localhost:8000/notes?page=1&size=10&title=meeting" \
-  -H "Authorization: Bearer <your_token>"
+Navigate to `http://localhost:8000/docs`, open the `GET /notes` endpoint, fill in `page`, `limit`, and `search` params and click **Execute**.
 ```
 
 | Param | Type | Description |
 |-------|------|-------------|
 | `page` | int | Page number *(default: 1)* |
-| `size` | int | Results per page *(default: 10)* |
-| `title` | string | Filter by title keyword |
+| `limit` | int | Results per page *(default: 10)* |
+| `search` | string | search by title keyword |
 
 **Response:**
 
@@ -207,8 +203,7 @@ curl "http://localhost:8000/notes?page=1&size=10&title=meeting" \
 ### Get Note by ID
 
 ```bash
-curl http://localhost:8000/notes/1 \
-  -H "Authorization: Bearer <your_token>"
+Navigate to `http://localhost:8000/docs`, open the `GET /notes/{id}` endpoint, enter the note ID and click **Execute**.
 ```
 
 **Response:**
@@ -229,9 +224,7 @@ curl http://localhost:8000/notes/1 \
 ### Update a Note
 
 ```bash
-curl -X PUT http://localhost:8000/notes/1 \
-  -H "Authorization: Bearer <your_token>" \
-  -H "Content-Type: application/json" \
+Navigate to `http://localhost:8000/docs`, open the `PUT /notes/{id}` endpoint, enter the note ID and updated body and click **Execute**.
   -d '{"title": "Updated Title", "content": "Updated content."}'
 ```
 
@@ -253,8 +246,7 @@ curl -X PUT http://localhost:8000/notes/1 \
 ## Deleting Notes
 
 ```bash
-curl -X DELETE http://localhost:8000/notes/1 \
-  -H "Authorization: Bearer <your_token>"
+Navigate to `http://localhost:8000/docs`, open the `DELETE /notes/{id}` endpoint, enter the note ID and click **Execute**.
 ```
 
 **Response:**
@@ -271,6 +263,7 @@ curl -X DELETE http://localhost:8000/notes/1 \
 ---
 
 ## Admin Role
+ An admin is a user first — everything a regular user can do, an admin can do. The difference is admins can see and delete notes belonging to any user.
 
 ### Capabilities
 
@@ -290,9 +283,7 @@ Admin registration is intentionally protected — it cannot be done through the 
 **Step 2** — Register admin with the secret in the header:
 
 ```bash
-curl -X POST http://localhost:8000/users/register-admin \
-  -H "Content-Type: application/json" \
-  -H "x-admin-secret: your_admin_bootstrap_secret" \
+Navigate to `http://localhost:8000/docs`, open the `POST /users/register-admin` endpoint, enter `your_admin_bootstrap_secret` in the `x-admin-secret` header field, fill in username and password in the request body and click **Execute**.
   -d '{"username": "admin", "password": "adminpass123"}'
 ```
 
@@ -309,8 +300,7 @@ curl -X POST http://localhost:8000/users/register-admin \
 **Step 3** — Login normally. The token returned carries admin privileges automatically.
 
 ```bash
-curl -X POST http://localhost:8000/users/login \
-  -H "Content-Type: application/json" \
+Navigate to `http://localhost:8000/docs`, open the `POST /users/login` endpoint, enter admin credentials and click **Execute**. The token returned carries admin privileges automatically.
   -d '{"username": "admin", "password": "adminpass123"}'
 ```
 
@@ -322,7 +312,45 @@ curl -X POST http://localhost:8000/users/login \
   "token_type": "bearer"
 }
 ```
+#### Admin — Get All Notes
 
+Navigate to `http://localhost:8000/docs`, open the `GET /admin/notes` endpoint and click **Execute**. This returns every note across all users in the system.
+
+**Response:**
+```json
+[
+  {
+    "id": 1,
+    "title": "Meeting Notes",
+    "content": "Discuss project milestones.",
+    "owner_id": 1,
+    "user_note_number": 1,
+    "created_at": "2026-03-09T16:27:59.569733+05:30"
+  },
+  {
+    "id": 2,
+    "title": "Ideas",
+    "content": "New feature brainstorm.",
+    "owner_id": 3,
+    "user_note_number": 1,
+    "created_at": "2026-03-09T17:10:22.123456+05:30"
+  }
+]
+```
+
+### Admin — Delete Any Note
+
+Navigate to `http://localhost:8000/docs`, open the `DELETE /admin/notes/{note_id}` endpoint, enter the note ID and click **Execute**.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Note deleted by admin"
+}
+```
+
+> Admin deletion happens through `/admin/notes/{note_id}` — a dedicated route separate from the regular user delete endpoint.
 ---
 
 ## Edge Cases
