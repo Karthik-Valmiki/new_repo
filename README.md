@@ -13,8 +13,12 @@
 
 ### 1. Install Docker
 
-Download and install Docker Desktop from [https://www.docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop). With Docker no other dependencies needed. Make sure your Docker engine is running before proceeding.
+Download and install Docker Desktop from [https://www.docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop). With Docker no other dependencies needed. 
 
+After installation, open the Docker Desktop application.
+  Important: Docker won't work until the app is open and you see the little whale icon in your taskbar/menu bar turn solid (it shouldn't be "animating" or "starting").
+
+Make sure Docker is running on left bottom, then you can proceed with the next steps
 
 ### 2. Clone the repository
 
