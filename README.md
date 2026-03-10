@@ -347,7 +347,8 @@ Response:
 ```json
 {
   "success": true,
-  "message": "Note deleted successfully"
+  "message": "Note deleted successfully",
+  "data": null
 }
 ```
 
@@ -448,7 +449,8 @@ Response:
 ```json
 {
   "success": true,
-  "message": "Note deleted by admin"
+  "message": "Note deleted by admin",
+  "data": null
 }
 ```
 
