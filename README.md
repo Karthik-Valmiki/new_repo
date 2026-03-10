@@ -217,7 +217,8 @@ Example request body:
 ```
 
 Use this token in requests as:
-
+Fill the details in top right positin " Authorize "
+You can ignore the cliend_id, Don't the fill the part
 ```
 Authorization: Bearer <your_token>
 ```
