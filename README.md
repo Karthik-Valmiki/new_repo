@@ -217,8 +217,7 @@ Example request body:
 ```
 
 Use this token in requests as:
-Fill the details in top right positin " Authorize "
-You can ignore the cliend_id, Don't the fill the part
+
 ```
 Authorization: Bearer <your_token>
 ```
@@ -226,6 +225,7 @@ Authorization: Bearer <your_token>
 In Swagger UI:
 
 Click the **Authorize** button on the top-right and paste the token.
+You can ignore the cliend_id, Don't fill the part
 
 ---
 
