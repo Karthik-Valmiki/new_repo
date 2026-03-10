@@ -379,7 +379,7 @@ Admin registration is protected.
 ### Step 1 — Set ADMIN_SECRET in `.env`
 
 ```
-ADMIN_SECRET=your_admin_bootstrap_secret
+ADMIN_SECRET=your_admin_bootstrap_secret (I am going with pass@admin)
 ```
 
 ---
@@ -391,7 +391,7 @@ Navigate to `POST /users/register-admin`
 Add header:
 
 ```
-x-admin-secret: your_admin_bootstrap_secret
+x-admin-secret: your_admin_bootstrap_secret (pass@admin)
 ```
 
 Example body:
@@ -399,7 +399,9 @@ Example body:
 ```json
 {
   "username": "admin",
-  "password": "adminpass123"
+  "email": "admin@gmail.com",
+  "password": "adminpass123",
+  "admin_secret": "pass@admin"
 }
 ```
 
