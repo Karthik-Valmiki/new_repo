@@ -1,6 +1,6 @@
 # AI-Powered Parametric Income Insurance for Gig Workers
 
-> Guidewire DEVTrails 2026 | Persona: Food Delivery Partner (Swiggy / Zomato) | City: Chennai
+> Guidewire DEVTrails 2026 | Persona: Food Delivery Partner (Swiggy / Zomato)
 
 ---
 
