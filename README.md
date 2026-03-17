@@ -1,4 +1,4 @@
-# GigShield — AI-Powered Parametric Income Insurance for Gig Workers
+# AI-Powered Parametric Income Insurance for Gig Workers
 
 > Guidewire DEVTrails 2026 | Persona: Food Delivery Partner (Swiggy / Zomato) | City: Chennai
 
@@ -353,31 +353,5 @@ Certain zones (flood-prone areas, dense urban pockets with poor drainage) will g
 | Hosting | AWS / GCP (free tier / student credits) |
 | Version Control | GitHub (same repo across all phases) |
 
-### Phase-Wise Development Plan
 
-**Phase 1 — Ideation & Foundation (Weeks 1–2) | Deadline: March 20**
-- Finalize persona: Food Delivery Partner, Chennai, Swiggy/Zomato
-- Define parametric triggers and threshold values
-- Design weekly premium model and tier structure
-- Build system architecture diagram
-- Set up GitHub repository with this README
-- Record 2-minute strategy + prototype video
 
-**Phase 2 — Automation & Protection (Weeks 3–4) | Deadline: April 4**
-- Build worker registration and onboarding flow
-- Implement AI risk profiling model (zone + weather + activity)
-- Develop dynamic weekly premium calculation engine
-- Build insurance policy creation and management module
-- Implement claims management with 3–5 automated parametric triggers
-- Record 2-minute demo video
-
-**Phase 3 — Scale & Optimise (Weeks 5–6) | Deadline: April 17**
-- Integrate advanced fraud detection (GPS spoofing, anomaly detection, duplicate prevention)
-- Build simulated instant payout system (Razorpay test / Stripe sandbox / UPI simulator)
-- Build dual-view intelligent dashboard (Worker view + Admin/Insurer view)
-- Package final deliverables: 5-minute demo video + Final Pitch Deck (PDF)
-
----
-
-> **Built for Guidewire DEVTrails 2026 — Unicorn Chase**
-> Seed → Scale → Soar
