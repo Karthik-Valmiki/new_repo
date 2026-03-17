@@ -1,478 +1,383 @@
-# Notes Management API
+# GigShield — AI-Powered Parametric Income Insurance for Gig Workers
 
-> A RESTful API for managing personal notes with **JWT authentication** and **Role-Based Access Control**.
-
-![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-2CA5E0?style=for-the-badge&logo=docker&logoColor=white)
-![JWT](https://img.shields.io/badge/JWT-black?style=for-the-badge&logo=JSON%20web%20tokens)
+> Guidewire DEVTrails 2026 | Persona: Food Delivery Partner (Swiggy / Zomato) | City: Chennai
 
 ---
 
-# Setup
+## Table of Contents
 
-## 1. Prerequisites
-
-Before running the project, ensure the following tools are installed on your system.
-
-### Python
-
-Download Python from the official website:
-
-https://www.python.org/downloads/
-
-Verify installation:
-
-```bash
-python --version
-```
-
-or
-
-```bash
-python3 --version
-```
-
-Expected output:
-
-```
-Python 3.x.x
-```
+1. [Executive Summary](#1-executive-summary)
+2. [Problem Statement](#2-problem-statement)
+3. [Target User Persona](#3-target-user-persona)
+4. [Product Overview](#4-product-overview)
+5. [Core System Components](#5-core-system-components)
+6. [Risk & Pricing Model](#6-risk--pricing-model)
+7. [Policy Structure](#7-policy-structure)
+8. [System Workflow](#8-system-workflow)
+9. [Key Challenges](#9-key-challenges)
+10. [Solutions & Mitigations](#10-solutions--mitigations)
+11. [Key Differentiators](#11-key-differentiators)
+12. [Tech Stack & Development Plan](#12-tech-stack--development-plan)
 
 ---
 
-### Git
+## 1. Executive Summary
 
-Download Git from:
+**GigShield** is an AI-enabled parametric income insurance platform built exclusively for India's platform-based food delivery partners (Swiggy / Zomato). Delivery workers in cities like Chennai routinely lose 20–30% of their weekly income due to uncontrollable external disruptions — extreme weather, severe pollution, or civic curfews — with zero financial protection available today.
 
-https://git-scm.com/downloads
+GigShield solves this by offering:
+- **Weekly income protection** with premiums as low as ₹40/week
+- **Zero-touch automated claims** triggered by real-world parametric events (no manual filing)
+- **AI-driven dynamic pricing** based on location risk, weather patterns, and worker activity
+- **Intelligent fraud detection** using GPS validation, anomaly scoring, and claim-behavior analysis
+- Coverage scope is strictly **loss of income only** — no health, life, accident, or vehicle payouts
 
-Verify installation:
-
-```bash
-git --version
-```
-
-Expected output:
-
-```
-git version 2.x.x
-```
+The platform addresses adverse selection through mandatory minimum subscriptions and restricts policy purchase to Sundays, ensuring workers cannot game the system by buying only on high-risk days.
 
 ---
 
-### Docker
+## 2. Problem Statement
 
-Download Docker Desktop from:
+### 2.1 Income Instability for Gig Workers
 
-https://www.docker.com/products/docker-desktop
+- Food delivery partners in India operate without any employment safety net
+- External disruptions — heavy rain, floods, extreme heat, AQI spikes, or sudden curfews — can completely halt delivery operations for hours or days
+- A typical Chennai delivery partner earning ₹5,000/week can lose ₹480–₹2,000 in a single disruption event
+- No existing insurance product addresses income loss at this granularity or affordability
 
-After installation, open the Docker Desktop application.
+### 2.2 Environmental & Social Disruptions
 
-Important: Docker will not work until the application is running. Wait until the Docker whale icon in your taskbar/menu bar becomes stable.
+| Disruption Type | Examples | Impact |
+|---|---|---|
+| Environmental | Heavy rain (>50mm), Extreme heat (>40°C), Severe Pollution (AQI >400), Flood warnings | Cannot work outdoors / deliveries halted |
+| Social | Unplanned curfews, local strikes, sudden zone closures | Inability to access pickup/drop locations |
 
-Verify installation:
+> **Important:** GigShield insures only the **income lost** during these events. Vehicle repair, health, or accident costs are explicitly excluded.
 
-```bash
-docker --version
-```
+### 2.3 Adverse Selection Problem
 
----
-
-# 2. Clone the Repository
-
-```bash
-git clone https://github.com/Karthik-Valmiki/Notes_Management_API.git
-cd Notes_Management_API
-```
-
----
-
-# 3. Configure Environment Variables (Mandatory)
-
-Before running the application, you **must create and configure the `.env` file**.
-
-Copy the example file:
-
-```bash
-cp .env.example .env
-```
-
-Now open `.env` and update the values.
-
-Example configuration:
-
-```env
-DATABASE_URL=postgresql://postgres:yourpassword@db:5432/notes_db
-SECRET_KEY=your_long_hex_secret_key_here
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-ADMIN_SECRET=your_admin_bootstrap_secret
-```
-
-Important notes:
-
-- `SECRET_KEY` must be a **long random string**
-- `ADMIN_SECRET` can be **any value you choose**
-- The `.env` file **must exist before running Docker**
-
-If this step is skipped, the API will fail to start.
+- Workers are likely to purchase insurance only when they anticipate disruption (e.g., during monsoon season or pollution alerts)
+- This creates an imbalanced risk pool, pushing up loss ratios
+- A structural policy design is required to counteract self-selection bias
 
 ---
 
-# 4. Generate a Secure SECRET_KEY
+## 3. Target User Persona
 
-Run the following command in your terminal:
-
-```bash
-python -c "import secrets; print(secrets.token_hex(32))"
-```
-
-Example output:
-
-```
-4d4d4b67a7f6a93c7a4d98b51f1d7e6d0d78e4d8d6d2a5c33b2c71f8cdd6b62f
-```
-
-Paste this value into your `.env` file:
-
-```env
-SECRET_KEY=PASTE_GENERATED_KEY_HERE
-```
+| Attribute | Details |
+|---|---|
+| Role | Food Delivery Partner |
+| Platform | Swiggy / Zomato |
+| City | Chennai |
+| Average Orders/Day | 18 |
+| Avg. Earnings/Order | ₹40 |
+| Daily Income | ₹720 |
+| Weekly Income | ₹5,000 |
+| Coverage Amount | 40% of weekly income = **₹2,000/week** |
+| Working Pattern | Daily, weather-dependent, outdoor |
+| Digital Comfort | Smartphone-first; prefers simple UX, regional language support |
+| Key Constraint | Week-to-week cash flow; cannot afford high upfront premiums |
 
 ---
 
-# Running the Application
+## 4. Product Overview
 
-After configuring the `.env` file, run the following command inside the project folder:
+### What GigShield Covers
 
-```bash
-docker compose up --build
-```
+- **Loss of income** caused by verified external disruptions during the active coverage week
+- Payout is calculated based on the estimated hours lost and the worker's average hourly earnings
+- Strictly excludes: health, life, accidents, vehicle damage, or platform-side order cancellations
 
-Run the above command in the VS Code terminal.
+### Weekly Income Protection Model
 
-Docker will start the PostgreSQL database first, and then the FastAPI application.
+- Premiums are charged on a **weekly basis**, aligned with the typical payout cycle of gig workers
+- Policy purchases are open **only on Sundays**; coverage runs **Monday through Sunday**
+- Minimum subscription: **4 consecutive weeks** — prevents adverse selection
 
----
+### Parametric Nature
 
-| | URL |
-|-|-----|
-| **API** | `http://localhost:8000` |
-| **Swagger UI** | `http://localhost:8000/docs` |
-
-> The database starts first — Docker's healthcheck ensures the API only comes up once PostgreSQL is fully ready.
-
----
-
-# Authentication
-
-## Register
-
-Navigate to `http://localhost:8000/docs`, open the `POST /users/register` endpoint, fill in `username`, `email`, and `password`, then click **Execute**.
-
-Example request body:
-
-```json
-{
-  "username": "karthik",
-  "email": "karthik@gmail.com",
-  "password": "secret123"
-}
-```
-
-**Response**
-
-```json
-{
-  "id": 1,
-  "username": "karthik",
-  "email": "karthik@gmail.com",
-  "role": "user"
-}
-```
+- There is **no manual claim filing**
+- Claims are triggered automatically when real-world data (weather APIs, pollution indices, civic alerts) breaches pre-defined parametric thresholds
+- Income loss is estimated algorithmically using disruption duration × worker's hourly rate
+- Payout is processed instantly via mock UPI / Razorpay / Stripe sandbox
 
 ---
 
-## Login
+## 5. Core System Components
 
-Navigate to `http://localhost:8000/docs`, open the `POST /users/login` endpoint, fill in `email` and `password`, then click **Execute**.
+### 5.1 Income Loss Estimation Engine
 
-Example request body:
+**What it does:** Calculates the income a worker is entitled to receive as payout when a disruption event is detected.
 
-```json
-{
-  "username": "karthik",
-  "password": "secret123"
-}
-```
-
-**Response**
-
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "bearer"
-}
-```
-
-Use this token in requests as:
-
-```
-Authorization: Bearer <your_token>
-```
-
-In Swagger UI:
-
-Click the **Authorize** button on the top-right and paste the token.
-You can ignore the cliend_id, Don't fill the part
+| | |
+|---|---|
+| **Inputs** | Worker's average hourly earnings, disruption start/end timestamps, active policy status |
+| **Logic** | `payout = hourly_earnings × disruption_duration_hours` |
+| **Example** | Hourly rate: ₹120 × 4 hours of rain disruption = **₹480 payout** |
+| **Outputs** | Payout amount, claim record, payout initiation signal |
 
 ---
 
-# Creating Notes
+### 5.2 Risk Zone Classification
 
-Navigate to `http://localhost:8000/docs`, open the `POST /notes` endpoint, enter the title and content, then click **Execute**.
+**What it does:** Assigns a geographic risk score to each worker's primary operating zone based on historical disruption frequency.
 
-Example request body:
-
-```json
-{
-  "title": "Meeting Notes",
-  "content": "Discuss project milestones."
-}
-```
-
-**Response**
-
-```json
-{
-  "id": 1,
-  "title": "Meeting Notes",
-  "content": "Discuss project milestones.",
-  "owner_id": 1,
-  "user_note_number": 1,
-  "created_at": "2026-03-09T16:27:59.569733+05:30"
-}
-```
+| | |
+|---|---|
+| **Inputs** | Worker's registered operating zone (GPS coordinates / delivery zone), historical weather + flood + AQI data per zone |
+| **Logic** | Zones are classified as Low / Medium / High risk based on disruption frequency over a rolling 12-month window |
+| **Outputs** | Zone risk label, zone risk multiplier (used in premium calculation) |
 
 ---
 
-# Managing Notes
+### 5.3 Parametric Trigger Engine
 
-## Get All Notes
+**What it does:** Continuously monitors real-time external data feeds and triggers automatic claim initiation when thresholds are breached within a worker's active coverage zone.
 
-Navigate to `http://localhost:8000/docs`, open the `GET /notes` endpoint and click **Execute**.
-
-Example response:
-
-```json
-[
-  {
-    "id": 1,
-    "title": "Meeting Notes",
-    "content": "Discuss project milestones.",
-    "owner_id": 1,
-    "user_note_number": 1,
-    "created_at": "2026-03-09T16:27:59.569733+05:30"
-  }
-]
-```
+| | |
+|---|---|
+| **Inputs** | Weather API (rainfall, temperature), AQI API, government flood/curfew alerts, worker's registered coverage zone |
+| **Triggers** | Heavy Rain: rainfall > 50mm / Heavy Heat: temperature > 40°C / Severe Pollution: AQI > 400 / Flood Warning: official alert issued / Curfew / Zone Closure: civic notification received |
+| **Outputs** | Trigger event log, automatic claim initiation signal, disruption duration timestamp |
 
 ---
 
-## Search & Pagination
+### 5.4 Fraud Detection System
 
-Navigate to `http://localhost:8000/docs`, open `GET /notes`, fill in parameters, and click **Execute**.
+**What it does:** Validates each triggered claim against worker location and activity data to reject fraudulent or ineligible payouts.
 
-| Param | Type | Description |
-|------|------|-------------|
-| page | int | Page number (default: 1) |
-| limit | int | Results per page (default: 10) |
-| search | string | Search by title keyword |
-
-Example response:
-
-```json
-[
-  {
-    "id": 1,
-    "title": "Meeting Notes",
-    "content": "Discuss project milestones.",
-    "owner_id": 1,
-    "user_note_number": 1,
-    "created_at": "2026-03-09T16:27:59.569733+05:30"
-  }
-]
-```
+| | |
+|---|---|
+| **Inputs** | Worker's real-time or last-known GPS location, active delivery records, claim history |
+| **Rules** | If `worker_location ≠ disruption_zone` → reject claim / Duplicate claim for same disruption event → reject / Unusual claim frequency relative to historical behavior → flag for review |
+| **Outputs** | Claim approved / rejected / flagged, anomaly score per claim, fraud audit log |
 
 ---
 
-## Get Note by ID
+### 5.5 Worker Reliability Score
 
-Navigate to `GET /notes/{id}`, enter the note ID, and click **Execute**.
+**What it does:** Generates a dynamic score per worker that reflects their activity consistency, delivery regularity, and claim behavior — used to adjust premium and coverage thresholds.
 
-```json
-{
-  "id": 1,
-  "title": "Meeting Notes",
-  "content": "Discuss project milestones.",
-  "owner_id": 1,
-  "user_note_number": 1,
-  "created_at": "2026-03-09T16:27:59.569733+05:30"
-}
-```
+| | |
+|---|---|
+| **Inputs** | Delivery activity history, login consistency, claim frequency, claim legitimacy outcomes |
+| **Scoring Logic** | High reliability → lower premium, higher coverage limit / Low reliability → higher premium, additional fraud verification steps |
+| **Outputs** | Reliability score (0–100), premium adjustment factor, fraud check flag |
 
 ---
 
-## Update a Note
+### 5.6 Risk Pool Architecture
 
-Navigate to `PUT /notes/{id}`, enter the ID and updated data.
+**What it does:** Segments insured workers into pools by tier and zone to ensure actuarial balance and prevent high-risk workers from subsidizing low-risk workers (or vice versa).
 
-Example request:
-
-```json
-{
-  "title": "Updated Title",
-  "content": "Updated content."
-}
-```
+| | |
+|---|---|
+| **Inputs** | Worker tier (A/B/C), zone risk classification, disruption history per zone |
+| **Logic** | Each pool collects premiums from its segment and pays out claims within the same segment; cross-pool reinsurance layer handles overflow |
+| **Outputs** | Pool balance per segment, payout capacity metrics, loss ratio per pool |
 
 ---
 
-# Deleting Notes
+## 6. Risk & Pricing Model
 
-Navigate to `DELETE /notes/{id}` and click **Execute**.
+### Core Formula
 
-Response:
-
-```json
-{
-  "success": true,
-  "message": "Note deleted successfully",
-  "data": null
-}
+```
+premium = base_rate × risk_multiplier
 ```
 
-Users can only delete **their own notes**.
+Where `risk_multiplier` is a composite of three sub-factors:
 
-Attempting to delete another user's note returns **403 Forbidden**.
+```
+risk_multiplier = f(weather_risk, location_risk, activity_level)
+```
+
+### Factor Breakdown
+
+| Factor | Description | Effect on Premium |
+|---|---|---|
+| **Weather Risk** | Probability of disruption in the upcoming week based on forecast data for the worker's zone | Higher forecast risk → higher multiplier |
+| **Location Risk** | Historical disruption frequency of the worker's primary operating zone | High-risk zone (e.g., flood-prone) → higher multiplier |
+| **Activity Level** | Worker's average weekly active hours and delivery consistency | More active workers → lower relative premium (better data, lower uncertainty) |
+
+### Premium Tiers
+
+| Tier | Weekly Premium | Profile |
+|---|---|---|
+| Tier A | ₹40 / week | High activity, low-risk zone, high reliability score |
+| Tier B | ₹60 / week | Moderate activity or moderate-risk zone |
+| Tier C | ₹90 / week | Low activity, high-risk zone, or low reliability score |
+
+> Premiums are reassessed at the start of each new 4-week subscription cycle.
 
 ---
 
-# Admin Role
+## 7. Policy Structure
 
-An admin is a user first — everything a regular user can do, an admin can do.
+### Policy Attributes
 
-Admins additionally can:
+| Attribute | Value |
+|---|---|
+| Policy ID | Auto-generated unique identifier |
+| Coverage Amount | ₹2,000 / week (40% of average weekly income) |
+| Weekly Premium | ₹40 – ₹90 depending on tier |
+| Coverage Period | Monday to Sunday (7 days) |
+| Minimum Subscription | 4 consecutive weeks |
+| Purchase Window | Sundays only |
+| Covered Disruptions | Heavy Rain, Extreme Heat, Severe Pollution, Flood Warning, Curfew/Zone Closure |
+| Coverage Zone | Worker's registered primary operating zone |
+| Exclusions | Health, life, accidents, vehicle damage, platform cancellations |
 
-| Action | User | Admin |
-|------|------|------|
-| CRUD on own notes | ✅ | ✅ |
-| View all users' notes | ❌ | ✅ |
-| Delete any note | ❌ | ✅ |
-| Manage users | ❌ | ✅ |
+### Parametric Thresholds
 
----
-
-# Setting Up an Admin Account
-
-Admin registration is protected.
-
-### Step 1 — Set ADMIN_SECRET in `.env`
-
-```
-ADMIN_SECRET=your_admin_bootstrap_secret (I am going with pass@admin)
-```
-
----
-
-### Step 2 — Register Admin
-
-Navigate to `POST /users/register-admin`
-
-Add header:
-
-```
-x-admin-secret: your_admin_bootstrap_secret (pass@admin)
-```
-
-Example body:
-
-```json
-{
-  "username": "admin",
-  "email": "admin@gmail.com",
-  "password": "adminpass123",
-  "admin_secret": "pass@admin"
-}
-```
-
-Response:
-
-```json
-{
-  "id": 2,
-  "username": "admin",
-  "role": "admin"
-}
-```
+| Trigger | Threshold |
+|---|---|
+| Heavy Rain | Rainfall > 50 mm in 24 hours |
+| Extreme Heat | Temperature > 40°C for 3+ continuous hours |
+| Severe Pollution | AQI > 400 |
+| Flood Warning | Official government flood alert issued for coverage zone |
+| Curfew / Zone Closure | Civic notification issued restricting movement in coverage zone |
 
 ---
 
-### Step 3 — Login
+## 8. System Workflow
 
-Use `POST /users/login` with admin credentials.
+### Step-by-Step: Onboarding to Payout
 
-The returned JWT token automatically contains **admin privileges**.
+**Step 1 — Worker Registration & Onboarding**
+Worker downloads the app, submits their delivery profile: name, phone, platform (Swiggy/Zomato), primary operating zone, average daily working hours, and bank/UPI details.
 
----
+**Step 2 — Worker Data Collection**
+System collects and stores: persona details, GPS-pinned operating zone, delivery platform, daily working pattern, and historical earnings estimate.
 
-# Admin Endpoints
+**Step 3 — AI Risk Profiling**
+The AI risk model assesses the worker's zone risk classification, weather forecast for their area, and initial activity data to generate a risk profile.
 
-## Get All Notes
+**Step 4 — Dynamic Weekly Premium Calculation**
+Using `premium = base_rate × risk_multiplier`, the system assigns the worker to Tier A, B, or C and displays their weekly premium.
 
-Navigate to `GET /admin/notes`.
+**Step 5 — Policy Creation**
+Worker reviews and accepts the policy on Sunday. The system generates a Policy ID with defined coverage amount, disruption triggers, coverage zone, and 4-week start date.
 
-Returns notes across all users.
+**Step 6 — Worker Purchases Weekly Policy**
+Payment is deducted weekly. Coverage activates Monday 00:00 and remains active through Sunday 23:59.
 
----
+**Step 7 — Trigger Monitoring (Continuous)**
+The Parametric Trigger Engine polls weather, AQI, flood alert, and curfew APIs every 15–30 minutes for all active coverage zones.
 
-## Delete Any Note
+**Step 8 — Disruption Detected**
+A threshold breach is logged for the relevant zone with a start timestamp. All workers with active policies in that zone are flagged for potential claim.
 
-Navigate to:
+**Step 9 — Automatic Claim Initiation**
+The system automatically initiates a claim for each eligible worker in the affected zone. No manual action required from the worker.
 
-```
-DELETE /admin/notes/{note_id}
-```
+**Step 10 — Income Loss Estimation**
+The engine calculates `payout = hourly_rate × disruption_duration` for each worker based on their registered earnings profile.
 
-Response:
+**Step 11 — Fraud Detection Checks**
+GPS validation confirms worker was in the coverage zone. Duplicate claim check runs. Anomaly detection scores the claim against historical behavior. If all checks pass, claim is approved.
 
-```json
-{
-  "success": true,
-  "message": "Note deleted by admin",
-  "data": null
-}
-```
+**Step 12 — Payout Processing**
+Approved payout is disbursed via mock UPI / Razorpay test mode / Stripe sandbox to the worker's registered account within minutes of disruption end.
 
----
-
-# Edge Cases
-
-| Scenario | Error | Fix |
-|------|------|------|
-| Wrong credentials | 401 Invalid username or password | Check credentials |
-| Missing token | 401 Not authenticated | Add Authorization header |
-| Expired token | 401 Token has expired | Login again |
-| Accessing another user's note | 403 Not authorized | Users can only access their own notes |
-| Wrong admin secret | 403 Invalid admin secret | Must match `.env` value |
-| DATABASE_URL None | ArgumentError | Ensure `.env` exists |
+**Step 13 — Dashboard Update**
+Worker dashboard updates with: payout received, coverage status, next premium due. Insurer/admin dashboard updates with: loss ratio, claims processed, zone disruption heatmap.
 
 ---
 
-# Author
+## 9. Key Challenges
 
-**Karthik Valmiki**
+### 9.1 Adverse Selection
+Workers are rational actors — they are more likely to subscribe during high-risk periods (monsoon, pollution season) and drop coverage when conditions are favorable. This skews the risk pool toward high-loss periods and increases the loss ratio unsustainably.
 
-GitHub:  
-https://github.com/Karthik-Valmiki
+### 9.2 Geographic Imbalance
+Certain zones (flood-prone areas, dense urban pockets with poor drainage) will generate disproportionately high claims relative to premiums collected from those zones, straining pool balance.
+
+### 9.3 Fraud Attempts
+- GPS spoofing: Workers may falsify their location to appear in a disruption zone when they are not
+- Fake disruption claims: Claiming income loss during a disruption while actually working
+- Duplicate claims: Attempting multiple claims for a single disruption event
+
+---
+
+## 10. Solutions & Mitigations
+
+### 10.1 Combating Adverse Selection
+- **Sunday-only purchase window:** Prevents mid-week panic buying when a storm is forecast
+- **Minimum 4-week subscription:** Spreads risk across low-disruption weeks, not just high ones
+- **Dynamic premium repricing:** Premiums are recalculated each subscription cycle using the latest weather forecast and zone risk data, so risk is priced in before coverage starts
+
+### 10.2 Managing Geographic Imbalance
+- **Zone-based risk pool segmentation:** High-risk zones contribute higher premiums; their payouts are funded from their own pool segment
+- **Zone risk multiplier in pricing formula:** Actuarially adjusts premiums to reflect real zone-level disruption probability
+
+### 10.3 Fraud Prevention
+- **GPS location validation:** Worker's GPS coordinates at claim time must fall within the declared coverage zone
+- **Anomaly detection scoring:** ML model flags claims that deviate significantly from the worker's historical pattern (e.g., claiming for every disruption at maximum duration)
+- **Duplicate claim prevention:** System de-duplicates claims by disruption event ID and worker ID
+- **Worker Reliability Score:** Chronic over-claimers are scored down, triggering higher premiums and additional verification on future claims
+
+### 10.4 Risk Pool Stability
+- **Tiered pool architecture:** Tier A, B, C pools are separately managed with distinct premium inflows and payout obligations
+- **Reliability score feedback loop:** High-reliability workers are rewarded with lower premiums, incentivizing consistent honest behavior
+
+---
+
+## 11. Key Differentiators
+
+| Feature | GigShield | Traditional Insurance |
+|---|---|---|
+| Claims process | Fully automated, zero-touch | Manual filing, long processing |
+| Payout speed | Minutes after disruption ends | Days to weeks |
+| Pricing model | AI-driven, dynamic, weekly | Static annual premiums |
+| Minimum premium | ₹40/week | Not designed for gig workers |
+| Trigger mechanism | Real-time parametric APIs | Self-reported events |
+| Fraud detection | AI + GPS + behavioral scoring | Manual investigation |
+| Coverage scope | Income loss only, precisely defined | Broad / mismatched for gig workers |
+
+---
+
+## 12. Tech Stack & Development Plan
+
+### Proposed Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React.js (Web) / React Native (Mobile) |
+| Backend | Node.js / Python (FastAPI) |
+| Database | PostgreSQL + Redis (for real-time trigger state) |
+| AI/ML | Python (scikit-learn / XGBoost for risk scoring, anomaly detection) |
+| Weather API | OpenWeatherMap (free tier) / IMD mock data |
+| AQI API | AQICN API (free tier) |
+| Payment Simulation | Razorpay test mode / Stripe sandbox |
+| Hosting | AWS / GCP (free tier / student credits) |
+| Version Control | GitHub (same repo across all phases) |
+
+### Phase-Wise Development Plan
+
+**Phase 1 — Ideation & Foundation (Weeks 1–2) | Deadline: March 20**
+- Finalize persona: Food Delivery Partner, Chennai, Swiggy/Zomato
+- Define parametric triggers and threshold values
+- Design weekly premium model and tier structure
+- Build system architecture diagram
+- Set up GitHub repository with this README
+- Record 2-minute strategy + prototype video
+
+**Phase 2 — Automation & Protection (Weeks 3–4) | Deadline: April 4**
+- Build worker registration and onboarding flow
+- Implement AI risk profiling model (zone + weather + activity)
+- Develop dynamic weekly premium calculation engine
+- Build insurance policy creation and management module
+- Implement claims management with 3–5 automated parametric triggers
+- Record 2-minute demo video
+
+**Phase 3 — Scale & Optimise (Weeks 5–6) | Deadline: April 17**
+- Integrate advanced fraud detection (GPS spoofing, anomaly detection, duplicate prevention)
+- Build simulated instant payout system (Razorpay test / Stripe sandbox / UPI simulator)
+- Build dual-view intelligent dashboard (Worker view + Admin/Insurer view)
+- Package final deliverables: 5-minute demo video + Final Pitch Deck (PDF)
+
+---
+
+> **Built for Guidewire DEVTrails 2026 — Unicorn Chase**
+> Seed → Scale → Soar
