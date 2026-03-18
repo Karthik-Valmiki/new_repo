@@ -5,6 +5,12 @@
 
 ---
 
+## Executive Summary
+
+India's 5 million+ food delivery riders on Zomato and Swiggy have no income protection when environmental conditions, platform outages, or civic shutdowns make earning impossible. GigShield is a parametric income protection platform that monitors disruption signals in real time and automatically processes compensation to a rider's UPI wallet at regular intervals — no claim required, no paperwork. Three things distinguish it: platform app outages are covered as a first-class trigger; the Social Disruption Oracle pre-arms coverage the night before a bandh or curfew so riders are protected before they leave home; and adverse selection is blocked structurally through a 24-hour policy activation window and a continuity payout scale that makes opportunistic gaming financially unattractive. Coverage is personalized using a Reliability Score derived from each rider's Time Utilization, Delivery Efficiency, and Completion Rate relative to their zone peers. Tech stack: React PWA, Node.js, PostgreSQL, Python ML microservice, OpenWeatherMap, Tomorrow.io, IQAir, Razorpay.
+
+---
+
 ## Table of Contents
 
 1. [Problem Statement](#1-problem-statement)
@@ -121,33 +127,35 @@ Every new policy also activates 24 hours after purchase, which prevents last-min
 
 ### Returning Users (Week 3 Onward)
 
-From week three, GigShield shifts to a personalized model. The premium and coverage for returning users are driven by two performance metrics: Time Utilization (TU) and Delivery Efficiency (DE), which together produce the Reliability Score (R).
+From week three, GigShield shifts to a personalized model. The premium and coverage for returning users are driven by three performance metrics: Time Utilization (TU), Delivery Efficiency (DE), and Completion Rate (CR), which together produce the Reliability Score (R).
 
 ```
-Adjusted TU = User's Active Hours this week / Average Active Hours in their Zone
-Adjusted DE = User's Completed Orders this week / Average Orders in their Zone
+Adjusted TU     = User's Active Hours this week / Average Active Hours in their Zone
+Adjusted DE     = User's Completed Orders this week / Average Orders in their Zone
+Completion Rate = User's Completed Orders / User's Accepted Orders
 
-R = sqrt(Adjusted TU × Adjusted DE × Completion Rate) {Completion rate = Completed orders / Accepted orders}
+R               = min(sqrt(Adjusted TU x Adjusted DE x Completion Rate), 1.0)
 
-Coverage %  = 40% + (25% x R)
-Premium     = Base Rate x Risk Multiplier x (1.5 - R)
+Coverage %      = 40% + (25% x R)
+Premium         = Base Rate x Risk Multiplier x (1.5 - R)
 ```
+
+R is clamped to a maximum of 1.0. This ensures Coverage never exceeds 65% and the premium multiplier (1.5 - R) never falls below 0.5, keeping both outcomes bounded regardless of how a rider performs relative to a low-activity zone average.
 
 **What these metrics measure:**
 
-- **Time Utilization (TU):** How consistently the rider is active relative to other riders in the same zone. A rider who works regularly will have a TU close to or above 1.0.
-- **Delivery Efficiency (DE):** How many orders the rider completes relative to the zone average. A high-performing rider will have a DE at or above 1.0.
-- **R (Reliability Score):** The geometric mean of both adjusted metrics. R ranges from 0 upward, with well-performing riders approaching or slightly exceeding 1.0.
+- **Time Utilization (TU):** How consistently the rider is active relative to other riders in the same zone. A rider who works regularly will have a TU at or close to 1.0.
+- **Delivery Efficiency (DE):** How many orders the rider completes relative to the zone average. A high-performing rider will have a DE at or close to 1.0.
+- **Completion Rate (CR):** The ratio of orders the rider completed to orders they accepted. A rider who accepts but drops orders will have a CR below 1.0, which pulls R down even if TU and DE are high. All three values come from the rider's own platform activity — no external data dependency.
+- **R (Reliability Score):** The geometric mean of all three metrics, clamped to 1.0. R ranges from 0 to 1.0, where 1.0 represents the maximum benefit level.
 
 **What R drives:**
 
 | R Value | Coverage | Premium Effect |
 |---|---|---|
-| R = 1.0 (high performer) | 40% + 25% = 65% | Base x Risk x 0.5 (lowest premium) |
+| R = 1.0 (high performer, clamped maximum) | 40% + 25% = 65% | Base x Risk x 0.5 (lowest premium) |
 | R = 0.5 (average) | 40% + 12.5% = 52.5% | Base x Risk x 1.0 (neutral) |
 | R = 0.0 (inactive) | 40% + 0% = 40% (floor) | Base x Risk x 1.5 (highest premium) |
-
-25% - Range ( 65% - 40% ) 
 
 A rider who is consistently active and completing orders relative to their zone peers pays less premium and receives higher coverage. A rarely active rider pays more and receives only the baseline floor coverage. The 40% floor ensures even low-activity riders have meaningful protection.
 
@@ -177,11 +185,12 @@ Risk Multiplier  = Zone risk score derived from environmental, AQI, and social d
 Weekly Premium = Base Rate x Risk Multiplier x (1.5 - R)
 
 Where:
-  Base Rate        = 2% of rider's self-declared weekly earnings
+  Base Rate        = 2% of rider's verified weekly income
   Risk Multiplier  = Zone risk score from environmental, AQI, and social forecasts
-  R = sqrt(Adjusted TU × Adjusted DE × Completion Rate), computed from the past week's data 
+  R                = min(sqrt(Adjusted TU x Adjusted DE x Completion Rate), 1.0)
+                     computed from the past week's data
 
-A higher R lowers the multiplier toward (1.5 - 1.0) = 0.5x (minimum).
+A higher R (capped at 1.0) lowers the multiplier toward (1.5 - 1.0) = 0.5x (minimum).
 A lower R raises the multiplier toward (1.5 - 0.0) = 1.5x (maximum).
 ```
 
@@ -199,7 +208,7 @@ Premium         = Rs. 70 x 1.30 x (1.5 - 0.8)
                 = Rs. 63.70
 
 Coverage %      = 40% + (25% x 0.8)           = 60%
-Weekly payout cap = Rs. 3,500 x 60%           = Rs. 2,100
+Weekly payout cap = Rs. 3,500 x 60%           = Rs. 2,100 (dynamic: Coverage % x Verified Weekly Income)
 ```
 
 **Policy structure:** Monday to Sunday. Activates 24 hours after purchase. Auto-renews via UPI mandate every Sunday. Riders register up to three active delivery zones. Coverage applies to whichever zone GPS confirms at the time of the disruption event.
@@ -208,8 +217,7 @@ Weekly payout cap = Rs. 3,500 x 60%           = Rs. 2,100
 
 ### 5.2 Multi-Dimensional Trigger System
 
-GigShield monitors four independent disruption categories simultaneously, each with its own threshold and duration requirements.
-If multiple triggers activate simultaneously, payout is computed using the highest-paying trigger for that interval, without stacking.
+GigShield monitors four independent disruption categories simultaneously, each with its own threshold and duration requirements. If multiple triggers activate simultaneously for the same rider during the same interval, only the trigger producing the highest payout for that interval is applied. Payouts are never stacked across concurrent triggers.
 
 | Trigger Type | Signal Source | What It Covers |
 |---|---|---|
@@ -230,9 +238,9 @@ ENVIRONMENTAL TRIGGER — Both conditions must be met simultaneously:
       Wind speed   above 40km/hr (dusty winds or heavy winds)
   Condition 2 (Duration):  Sustained for more than 1 hour continuously
 
-AQI TRIGGER — Both conditions must be met:
-  Condition 1: AQI above 300
-  Condition 2: Sustained reduction in order completion rate in the zone
+AQI TRIGGER — Both conditions must be met simultaneously:
+  Condition 1 (Threshold): AQI above 300 in rider's active zone
+  Condition 2 (Duration):  Sustained for more than 2 hours continuously during the rider's shift
 
 PLATFORM BLACKOUT TRIGGER — Both conditions must be met:
   Condition 1 (Threshold): Platform uptime below 100% (outage confirmed by third-party)
@@ -257,10 +265,9 @@ GigShield monitors platform uptime every five minutes via neutral third-party up
 
 ```
 Trigger Condition:
-  Platform outage is defined as sustained inability to receive or complete orders,
-  validated using third-party outage signals and rider-side activity patterns
+  Platform uptime below 100% for more than 45 continuous minutes
   AND time falls within food delivery peak window (12:00–14:30 OR 19:00–22:30)
-  AND rider was active on the platform at outage start
+  AND rider was active or logged in on the specific affected platform at outage start
   AND rider holds an active policy with the 24-hour activation window already passed
 
 Payout per interval:
@@ -306,7 +313,7 @@ Step 4: Disruption day — cross-verification via:
 Step 5: All three conditions confirmed — payout intervals begin automatically
 ```
 
-What makes this different from every other solution: all other parametric products are reactive.The Social Disruption Oracle enables early detection and pre-activation readiness rather than direct predictive payouts.
+What makes this different from every other solution: all other parametric products are reactive. The Social Disruption Oracle predicts and pre-arms coverage before the disruption hits, turning parametric insurance from reactive to genuinely proactive.
 
 ---
 
@@ -330,25 +337,28 @@ From week five onward, city-level defaults are replaced by pin-code level zone h
 
 **Performance-Based Factor (Week 3 Onward)**
 
-For returning users, the Reliability Score R (derived from Time Utilization and Delivery Efficiency relative to zone peers) adjusts the premium via the factor (1.5 - R). A high-performing rider with R near 1.0 pays significantly less than a low-activity rider with R near 0. The formula is:
+For returning users, the Reliability Score R — derived from Time Utilization, Delivery Efficiency, and Completion Rate relative to zone peers, clamped to a maximum of 1.0 — adjusts the premium via the factor (1.5 - R). A high-performing rider with R at 1.0 pays the minimum possible premium. A low-activity rider with R near 0 pays the maximum. The formula is:
 
 ```
 Premium = Base Rate x Risk Multiplier x (1.5 - R)
+  where R = min(sqrt(Adjusted TU x Adjusted DE x Completion Rate), 1.0)
 ```
 
 See Section 4 for the full R derivation.
 
 **Income Reference**
 
-Income Reference is bounded using a hybrid validation approach:
+Income is validated using a hybrid bounding approach to prevent over-declaration while preserving onboarding simplicity:
 
+```
 Verified Weekly Income = min(
   Self-declared income,
-  City-level benchmark for the rider’s category,
-  Historical earnings (if available)
+  City-level benchmark for the rider's earnings bracket,
+  Historical earnings if available from week 3 onward
 )
+```
 
-This prevents over-declaration while preserving onboarding simplicity.
+The base rate of 2% is applied to the verified weekly income. The 6% hard cap ensures no rider pays more than six percent of their verified weekly income regardless of stacked multipliers.
 
 ---
 
@@ -362,13 +372,13 @@ The Income Continuity Guarantee operates on a tiered scale linked to subscriptio
 
 | Subscription Tenure | Coverage % | Notes |
 |---|---|---|
-| Week 1 to Week 2 | Fixed at 40% | No R data yet; city baseline income used |
-| Week 3 to Week 4 | 40% + (25% x R), capped at 65% | R computed from past week; 50% of entitled payout |
-| Week 5 and beyond | 40% + (25% x R), capped at 65% | Full entitled payout up to the weekly cap |
+| Week 1 to Week 2 | Fixed at 40% | No R data yet; city baseline income used for hourly reference |
+| Week 3 to Week 4 | 40% + (25% x R), capped at 65% | R computed from past week's TU, DE, and CR data |
+| Week 5 and beyond | 40% + (25% x R), capped at 65% | Pin-code level zone averages replace city-wide defaults |
 
-For new users (weeks 1 and 2), coverage is fixed at 40% independent of R since no performance data exists.
+For new users (weeks 1 and 2), coverage is fixed at 40% independent of R since no performance data exists yet.
 
-For returning users, coverage grows with R. A rider who becomes more consistent and efficient over time earns higher coverage and pays a lower premium — the two outcomes compound to make sustained engagement meaningfully rewarding.
+For returning users, coverage grows with R week over week. A rider who becomes more consistent, efficient, and reliable over time earns higher coverage and pays a lower premium — the two outcomes compound to make sustained engagement meaningfully rewarding.
 
 ### Coverage Cap Rationale
 
@@ -386,7 +396,7 @@ WHY NOT 100%:
                          = premiums stay affordable and pool remains sustainable
 ```
 
-The weekly payout cap is dynamically derived from the rider’s coverage percentage and weekly income baseline. This ensures proportional protection while maintaining financial sustainability across different income brackets.
+The weekly payout cap is dynamically derived per rider: Weekly Cap = Coverage % x Verified Weekly Income. This ensures proportional protection across income brackets rather than a single fixed ceiling.
 
 ### Payout Example
 
@@ -410,7 +420,7 @@ Same rider in week 1 (coverage fixed at 40%):
 Per-interval payout = 0.5 hours x Rs. 90 x 40% = Rs. 18
 Total over 3 hours  = Rs. 18 x 6 = Rs. 108
 ```
-All payouts across any number of triggers within a week are cumulatively capped by the weekly payout cap derived from the rider’s coverage percentage.
+
 ---
 
 ## 8. Payout Logic
@@ -423,31 +433,26 @@ Per-Interval Payout Formula:
 
 Where:
   Interval Duration  = Fixed payout interval (every 30 minutes = 0.5 hours)
-  Rider's Hourly     = Self-declared weekly earnings / estimated weekly active hours
-                       (city baseline used for new users)
+  Rider's Hourly     = Verified Weekly Income / estimated weekly active hours
+                       (city baseline used for new users; verified income from week 3+)
   Coverage %         = 40% for new users (weeks 1 and 2)
-                       40% + (25% x R) for returning users (week 3+)
+                       40% + (25% x R) for returning users (week 3+),
+                       where R = min(sqrt(TU x DE x CR), 1.0), max coverage 65%
 
 Payout Timeline:
   - Trigger fires when both threshold and duration conditions are confirmed
-  - First payout interval processed immediately at trigger confirmation
-  - Subsequent intervals processed at fixed intervals while disruption continues
+  - First payout interval processed at trigger confirmation
+  - Subsequent intervals processed at 30-minute intervals while disruption continues
   - Payout stops when disruption ends (conditions drop below threshold)
   - Payout also stops when rider's weekly coverage cap is exhausted
+    (Weekly Cap = Coverage % x Verified Weekly Income, computed per rider)
   - Each payout interval is logged with the trigger event ID for audit and fraud tracking
 
-Multi Trigger Resolution Rule:
-
-If multiple trigger conditions are active simultaneously for the same rider
-during the same time interval, payouts are NOT stacked.
-
-Only the trigger that results in the highest payout for that interval
-is considered for compensation.
-
-This ensures:
-  - No double counting of income loss
-  - Prevention of payout stacking across correlated events
-  - Financial stability of the system under compound disruptions
+Multi-Trigger Resolution Rule:
+  If multiple trigger conditions are active simultaneously for the same rider
+  during the same interval, payouts are NOT stacked.
+  Only the trigger producing the highest payout for that interval is applied.
+  This prevents double-counting of the same income loss across correlated events.
 ```
 
 An SMS confirmation is sent at the first interval with the trigger event ID. Subsequent intervals within the same event are processed silently until the event closes.
@@ -485,7 +490,7 @@ GigShield is fraud-resistant by structural design. The core principle is that th
 
 **24-hour policy activation window.** A rider cannot purchase coverage moments before a known disruption and immediately claim. The waiting period structurally eliminates last-minute opportunistic purchases.
 
-**GPS-based zone validation.** The rider's GPS location at the time of disruption must match one of their registered delivery zones. A rider outside the declared disruption zone does not receive a payout. GPS validation is combined with behavioral signals such as session activity and movement consistency to prevent spoofing.
+**GPS-based zone validation.** The rider's GPS location at the time of disruption must match one of their registered delivery zones. A rider outside the declared disruption zone does not receive a payout.
 
 **Duplicate trigger blocking.** The system stores trigger event IDs and blocks duplicate payouts for the same event under the same policy.
 
@@ -529,8 +534,6 @@ The financial model is built around four principles that keep the platform solve
 
 **Weekly policy cycle limits liability.** The policy unit is a single week (Monday to Sunday). Maximum platform liability is always bounded by the current week's active policies. There is no long-tail multi-year exposure.
 
-Coverage and premium parameters are dynamically adjusted if projected loss ratios exceed acceptable thresholds.
-
 ```
 Loss ratio target: 0.40 to 0.60
 For every Rs. 1.00 collected in premiums, GigShield targets
@@ -562,7 +565,7 @@ Premium engine re-runs for all active riders
 Pulls fresh environmental forecast (rain, hail, wind, dust), AQI forecast,
   and social disruption signals for each registered zone
 For returning users (week 3+): recalculates R from the past week's
-  Time Utilization and Delivery Efficiency data
+  Time Utilization, Delivery Efficiency, and Completion Rate data
 Generates new personalized premium for the coming week
 New weekly premium auto-debited via existing UPI mandate
 Policy for the coming week activates Monday morning for renewing subscribers
@@ -597,7 +600,7 @@ ENVIRONMENTAL TRIGGER (Rain / Hail / Wind / Dust):
     Payout intervals begin at trigger confirmation
     Processed at 30-minute intervals while threshold conditions hold
     Stops when environmental conditions drop below threshold
-      or weekly coverage cap (derived from coverage % × verified weekly income)is exhausted
+      or weekly coverage cap (Coverage % x Verified Weekly Income) is exhausted
 
 AQI TRIGGER:
   Threshold: AQI above 300 in rider's active zone
@@ -611,7 +614,7 @@ AQI TRIGGER:
     Stops when AQI drops below threshold or cap is exhausted
 
 PLATFORM BLACKOUT TRIGGER (Zomato / Swiggy — monitored independently):
-  Threshold: Platform outage (confirmed by third-party monitor)
+  Threshold: Platform uptime below 100% (confirmed by third-party monitor)
   Duration:  Sustained for more than 45 minutes
              AND within peak hours (12:00–14:30 or 19:00–22:30)
   Validation:
@@ -652,7 +655,7 @@ ALL TRIGGERS — Common Rule:
 | Model | Type | Framework | Output |
 |---|---|---|---|
 | Premium engine | Supervised regression | XGBoost / scikit-learn | Weekly risk score and premium per rider |
-| R calculator | Deterministic formula | None required | TU, DE, R per rider per week |
+| R calculator | Deterministic formula | None required | TU, DE, CR, R (clamped to 1.0) per rider per week |
 | Disruption oracle | NLP classifier | HuggingFace Transformers | Confidence score 0 to 100% per zone |
 | Fraud anomaly engine | Rule-based + ML | Isolation Forest | Flags suspicious claim patterns |
 | Payout processor | Deterministic formula | None required | Interval x Hourly Rate x Coverage % |
