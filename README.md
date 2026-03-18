@@ -2,18 +2,55 @@
 
 > **Hackathon Phase 1 Submission | Problem Statement: AI-Powered Insurance for India's Gig Economy**
 
-## In One Line
+---
 
-GigShield protects delivery riders from income loss caused by real-world disruptions like rain, platform outages, and city shutdowns by automatically detecting events and paying in real time without any claim process.
+## Quick Summary (for judges)
 
-## Why It Stands Out (Quick View)
+GigShield is a **parametric income protection** product for food delivery riders (Zomato/Swiggy). It focuses on **income loss only** (not health/accident/vehicle) and pays automatically when disruption triggers are met.
 
-- Covers platform outages, not just weather
-- Detects disruptions before they happen (bandhs, curfews)
-- Pays during disruption, not after
-- No claims, no paperwork, fully automatic
+What’s different vs typical parametric ideas:
 
-GigShield protects delivery riders from income loss caused by real-world disruptions like rain, platform outages, and city shutdowns by automatically detecting events and paying in real time without any claim process.
+- **Platform outages** are covered (app downtime during peak hours is a real, frequent income shock).
+- **Social disruptions** can be detected **the night before** (bandh/curfew/Section 144), so coverage is pre-armed.
+- **Anti-gaming design** (continuity scale + personal loss ratio + pool math) makes “buy only in bad weeks” behavior unprofitable.
+
+What the system does in one line: **detect disruption → verify with independent signals → compute payout from duration × hourly rate × coverage % → send to UPI automatically.**
+
+---
+
+## Demo walkthrough (how to show this fast)
+
+If you have 3–6 minutes, this flow makes the product obvious:
+
+1. **Start with the Golden Rule**
+   - Say: “We cover income loss only. No health/accident/vehicle.”
+   - Point to the three triggers: weather/AQI, platform blackout, social disruption.
+
+2. **Show pricing in 15 seconds**
+   - Walk through the premium formula and the cap (premium never exceeds 6%).
+   - Use the included Suresh example (Rs.3,500/week → Rs.163 premium, max payout Rs.2,100).
+
+3. **Demo Scenario A: Platform outage payout (most intuitive)**
+   - “Assume Swiggy is down for 70 minutes during dinner peak.”
+   - Show trigger: uptime < 100% for > 45 minutes, within 19:00–22:30, rider active.
+   - Show payout math: (70 ÷ 60) × hourly rate × coverage %.
+   - Deliver the punchline: “No claim. Verified by third-party uptime. Paid to UPI in ~2 minutes after trigger confirmation.”
+
+4. **Demo Scenario B: AQI / weather payout (shows threshold logic)**
+   - “AQI > 300 for 2+ hours during shift” or “Rainfall > 50mm/hr for 1+ hour.”
+   - Emphasize why threshold + duration avoids fraud.
+
+5. **Demo Scenario C: Social disruption pre-arming (the differentiator)**
+   - “Bandh announced tonight. We pre-arm coverage by 11pm.”
+   - Next day: confirm via 3 sources + restaurant availability drop + rider GPS → payout triggers.
+
+If you have time for one slide, make it this:
+
+- **Inputs**: Weather/AQI + Uptime + News/Social + GPS + Restaurant availability
+- **Verification**: independent signals per trigger
+- **Output**: event ID + payout to UPI + dashboard log
+
+---
 
 ## What GigShield Does That No One Else Does
 
@@ -131,27 +168,27 @@ TIERED BY DISRUPTION SEVERITY:
     AQI 300–400
     Platform down 45–90 mins
 
-  Extreme disruption               → 70% of hourly income loss
+  Extreme disruption               → 60% of hourly income loss
     Rainfall > 100mm/hr
     AQI > 400 (severe category)
     Full confirmed bandh/curfew
     Platform down > 90 mins
 
-  Hard ceiling: Never exceeds 70% under any condition
+  Hard ceiling: Never exceeds 60% under any condition
   Weekly cap : Rs.1,200 regardless of coverage percentage
 
 CONTINUITY SCALE OPERATES WITHIN THE COVERAGE CAP:
   Week 1–2  → 40% of entitled payout (new subscriber protection)
-  Week 3–4  → 70% of entitled payout
-  Week 5+   → 100% of entitled payout
+  Week 3–4  → 50% of entitled payout
+  Week 5+   → 60% of entitled payout
 
 EXAMPLE — Week 5+ rider, extreme bandh, Rs.80/hr, 4 hours lost:
   Full loss          = Rs.80 x 4 = Rs.320
-  70% coverage cap   = Rs.224 entitled
-  100% continuity    = Rs.224 actual payout
+  60% coverage cap   = Rs.192 entitled
+  60% continuity     = Rs.115.20 actual payout
 
 New subscriber (week 1–2): same formula but 40% continuity cap
-  → Rs.96 entitled x 40% = Rs.38.40 actual payout
+  → Rs.192 entitled x 40% = Rs.76.80 actual payout
   → Gaming week 1 is a net loss on any premium paid
 ```
 
@@ -315,7 +352,7 @@ CLAIM TRIGGER (Zero Rider Action Required)
 
   ALL TRIGGERS:
   ├── Eligibility checked (active policy + no duplicate + zone match)
-  ├── Payout = Hourly Rate x Duration x Coverage % (60% standard / 70% extreme)
+  ├── Payout = Hourly Rate x Duration x Coverage % (60%)
   └── SMS confirmation sent → Claim stored with event ID
 
 ────────────────────────────────────────────────────────────────────
@@ -405,17 +442,19 @@ Scoping the hackathon MVP around rule-based implementations keeps delivery reali
 
 ## Financial Sustainability Model
 
-A smart rider could game any weather-based product by buying the premium only during bad weeks. GigShield blocks this with three layers:
+A smart rider could game any weather-based product by buying the premium only during bad weeks. GigShield blocks this with three layers, and the whole design is built around a hard **60% payout ceiling** (plus the continuity scale below).
 
-| Layer                   | Mechanism                                                  | Effect                                            |
-| ----------------------- | ---------------------------------------------------------- | ------------------------------------------------- |
-| Continuity payout scale | Week 1–2 = 40% cap, week 3–4 = 70%, week 5+ = 100%         | Joining before a bad week yields almost nothing   |
-| Loss ratio monitor      | Ratio > 1.8x triggers personal surcharge, grows each cycle | Gaming becomes net loss by month 5                |
-| Pool math               | 1,000 riders, ~100 claims/week — pool stays profitable     | Minority who game are absorbed by honest majority |
+| Layer                   | Mechanism                                                              | Effect                                                                                                    |
+| ----------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Continuity payout scale | Week 1–2 = 40% of entitled payout, week 3–4 = 50%, week 5+ = 60%       | Joining right before a “bad week” pays out less than people expect, which makes churn-gaming unattractive |
+| Loss ratio monitor      | Personal loss ratio > 1.8x triggers a surcharge, increasing each cycle | Repeat gaming gets progressively more expensive over time                                                 |
+| Pool math               | 1,000 riders, ~100 claims/week — pool stays profitable                 | Pool absorbs normal variance while keeping pricing stable for honest riders                               |
 
 Cancelling and rejoining resets eligibility to week 1 — making repeated gaming progressively more expensive to restart.
 
-**Loss ratio target: 0.6–0.8** — for every Rs.1 collected in premiums, GigShield pays out Rs.0.60–0.80 in claims. The 60% coverage cap is the primary lever that keeps the loss ratio within this target range.
+**Loss ratio target: 0.4–0.6** — for every Rs.1 collected in premiums, GigShield pays out Rs.0.40–0.60 in claims.
+
+**Why this holds with 60% payouts:** the product has a hard ceiling of **60% of hourly income loss** on any trigger, and then the **continuity scale** can reduce the actual paid amount further for newer subscribers (Week 1–2 pays 40% of the entitled amount; Week 3+ pays 60%). In other words, even when a valid disruption happens, the system never pays 100% of lost income, which keeps expected payouts bounded and helps the pool stay sustainable.
 
 ---
 
