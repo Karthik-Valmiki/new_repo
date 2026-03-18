@@ -1,413 +1,337 @@
-# AI-Powered Parametric Insurance (PI) for Gig Workers
+# GigShield — AI-Powered Parametric Insurance for Food Delivery Partners
 
-## 1. Problem Understanding
-
-### Context
-
-India’s gig delivery workforce (Zomato, Swiggy, Zepto, Amazon, etc.) operates on a **daily earning model**, where income is directly tied to working hours.
-
-External disruptions such as:
-
-- Heavy rainfall  
-- Extreme heat  
-- High AQI  
-- Curfews / local restrictions  
-- Road blockages  
-
-can significantly reduce working time, leading to **20–30% weekly income loss**.
+> Guidewire DEVTrails 2026 | Phase 1 Submission
 
 ---
 
-### Core Problem
+## The Problem
 
-> Gig workers face **unpredictable income loss due to uncontrollable external disruptions**, with **no automated system to compensate lost earnings in real time**.
+India's food delivery partners (Zomato, Swiggy) earn between ₹5,000–₹8,000 per week, paid per delivery with no fixed salary. Their income is entirely dependent on being on the road. When external disruptions hit — a sudden downpour, a heatwave, an AQI spike, a local curfew — deliveries stop. Demand collapses. Earnings go to zero.
 
-This results in financial instability and lack of income certainty.
+This isn't occasional. Heavy rain events in metros occur 30–40 times annually during monsoon. Each event wipes 20–30% of that week's income. There is no safety net. No insurance product exists for this. Workers absorb the entire loss.
 
----
-
-## 2. Persona-Based Scenario
-
-### Persona: Food Delivery Partner
-
-- Works 8–12 hours/day  
-- Paid per delivery (variable income)  
-- Operates in fixed zones  
-- Fully dependent on mobile applications  
-- Requires predictable weekly income  
+**GigShield changes that.** A parametric insurance platform that detects disruptions automatically, validates worker activity in real time, and credits lost income to the worker's wallet — every 10 minutes, without a single manual claim.
 
 ---
 
-### Scenario Without System
+## Persona and Scenario
 
-- Rain begins during peak hours  
-- Delivery demand drops  
-- Earnings reduce to near zero  
-- No compensation exists  
+### Who We Are Building For
 
----
+**Ravi, 28 — Swiggy Delivery Partner, Hyderabad**
 
-### Scenario With PI System
+- Works 9–11 hours/day, 6 days a week
+- Earns approximately ₹80/hour, fully variable
+- Operates in 2–3 fixed delivery zones
+- Has no financial buffer; week-to-week income = week-to-week survival
+- Has never filed an insurance claim in his life and doesn't know how to
 
-- Rainfall crosses threshold  
-- System detects disruption automatically  
-- Worker activity is validated  
-- Income loss is calculated continuously  
-- Payout is credited in real time  
+### Scenario Without GigShield
 
----
+It's a Tuesday evening — peak dinner hours. Rain begins at 6:45 PM, intensity: 65 mm/hour. The Swiggy app goes quiet. No new orders. Ravi waits under a petrol station canopy for 90 minutes. He earns ₹0 during what should have been his best earning window of the day. He does this 3–4 times a month during monsoon season. No one compensates him.
 
-### Outcome
+### Scenario With GigShield
 
-> Worker income is stabilized during disruptions, reducing volatility and uncertainty.
+At 6:47 PM, GigShield's trigger engine detects rainfall crossing the 50 mm/hour threshold across two independent data sources. Ravi's GPS confirms he is within his registered zone. His app session is active. A delivery attempt was logged 18 minutes ago.
 
----
+At 6:50 PM — ₹13.3 credited to wallet.
+At 7:00 PM — ₹13.3 credited.
+At 7:10 PM — ₹13.3 credited.
 
-## 3. Product Strategy & Platform Decision
-
-### Approach
-
-- **Mobile-first product design (real-world usage)**
-- **Web-based MVP implementation (for hackathon execution)**
+By 8:15 PM when the rain stops, Ravi has received ₹93.1 — compensating approximately 60% of his lost earning window. No form filled. No call made. No claim submitted.
 
 ---
 
-### Justification
+## Application Workflow
 
-| Factor | Decision |
-|------|--------|
-| Real user environment | Mobile (GPS, activity tracking, notifications) |
-| Development speed | Web (faster implementation, easier debugging) |
-| Demo reliability | Web MVP ensures stable execution |
+```
+Worker Registration and KYC
+        ↓
+Risk Profiling (Zone + Behavior + History)
+        ↓
+Weekly Premium Calculation (AI-driven multiplier)
+        ↓
+Policy Purchase (Sunday window only)
+        ↓
+Policy Activation (24-hour delay — adverse selection guard)
+        ↓
+Continuous Trigger Monitoring (every 10 minutes via external APIs)
+        ↓
+Disruption Detected → Multi-source consensus check
+        ↓
+Activity Validation (GPS + Session + Delivery Attempt)
+        ↓
+Fraud Scoring (real-time, per interval)
+        ↓
+Interval Payout Calculation (every 10 minutes during disruption)
+        ↓
+Instant Wallet Credit
+```
 
 ---
 
-## 4. End-to-End Workflow
+## Weekly Premium Model
 
-User Registration  
-→ Risk Profiling  
-→ Weekly Premium Calculation  
-→ Policy Activation (Sunday + 24h delay)  
-→ Continuous Monitoring (every 10 minutes)  
-→ Disruption Detection  
-→ Activity Validation  
-→ Fraud Scoring  
-→ Interval-Based Payout Calculation  
-→ Instant Wallet Credit  
-
----
-
-## 5. Weekly Premium Model
+Gig workers are paid weekly and think in weekly cycles. The premium model is designed to match that — affordable, transparent, and recalculated each week based on real risk.
 
 ### Core Formula
 
-Premium = Base Rate × Risk Multiplier  
-
----
+```
+Weekly Premium = Base Rate x Risk Multiplier
+```
 
 ### Base Rate
 
-Base Rate = Expected Weekly Payout + Margin  
+The Base Rate is a system-level constant representing the expected payout cost in the lowest-risk scenario, plus an operational margin.
 
-#### Explanation
+```
+Avg weekly income           = ₹5,600
+Hourly income               = ₹80
+Avg disruption (low-risk)   = 5 hours/week
+Disruption probability      = 10%
 
-- Expected Weekly Payout → estimated average income loss  
-- Margin → buffer for uncertainty and operational sustainability  
-
----
-
-### Example Calculation
-
-- Weekly income = ₹5600  
-- Hourly income = ₹80  
-- Avg disruption = 5 hours/week  
-- Probability = 10%  
-
-Expected payout = 80 × 5 × 0.1 = ₹40  
-Base Rate = ₹50  
-
----
+Expected weekly payout      = 80 x 5 x 0.1 = ₹40
+Base Rate                   = ₹50  (₹40 expected payout + ₹10 margin)
+```
 
 ### Risk Multiplier
 
-Risk Multiplier =  
-Location Risk × Weather Risk × Behavior Risk × Claim Risk  
+The Risk Multiplier is calculated per user, per week, and adjusts the Base Rate based on four real-world factors.
 
-#### Components
+```
+Risk Multiplier = Location Risk x Weather Risk x Behavior Risk x Claim Risk
+```
 
-- Location Risk → flood-prone or high AQI zones  
-- Weather Risk → forecast-based disruption probability  
-- Behavior Risk → user activity consistency  
-- Claim Risk → historical claim frequency  
+| Component | What It Captures |
+|---|---|
+| Location Risk | Whether the worker operates in a flood-prone or high-AQI zone |
+| Weather Risk | Forecast-based disruption probability for the coming week |
+| Behavior Risk | Worker's active hours consistency — irregular workers carry higher risk |
+| Claim Risk | Historical payout frequency for this worker |
 
----
+### Example Premium Calculation
 
-### Example Premium
+```
+Base Rate    = ₹50
+Multiplier   = 1.4  (moderate risk zone, active monsoon forecast)
+Premium      = ₹70/week
+```
 
-Premium = 50 × 1.4 = ₹70/week  
-
----
-
-## 6. Parametric Trigger System
-
-### Trigger Conditions
-
-| Disruption | Threshold |
-|----------|----------|
-| Rainfall | ≥ 50 mm/hour |
-| Heat | ≥ 40°C |
-| AQI | ≥ 300 |
-| Flood Alert | Binary |
+For a worker earning ₹5,600/week, this is 1.25% of weekly income — less than the cost of one skipped meal.
 
 ---
+
+## Parametric Trigger Definitions
+
+GigShield does not wait for workers to report disruptions. Triggers fire automatically when measurable environmental thresholds are crossed.
+
+| Disruption Type | Trigger Threshold |
+|---|---|
+| Heavy Rainfall | >= 50 mm/hour |
+| Extreme Heat | >= 40 degrees C |
+| Severe AQI | >= 300 (Hazardous category) |
+| Flood Advisory | Binary — official government alert |
+| Local Curfew / Zone Closure | Binary — verified official notification |
 
 ### Data Sources
 
-- OpenWeather  
-- IMD (or mock APIs)  
-- AQI APIs  
+- OpenWeather API (primary)
+- IMD — India Meteorological Department (secondary / validation)
+- OpenAQ (AQI monitoring)
+- Government and municipal alert feeds (curfew and flood advisories)
+
+### Consensus Rule
+
+A trigger activates only when at least two independent data sources confirm the threshold is crossed. A single API reporting anomalous data does not trigger a payout. This multi-source validation is the foundation of the system's reliability and false-positive resistance.
 
 ---
 
-### Validation Rule
+## Interval-Based Payout Model
 
-> A trigger is considered valid if at least two independent data sources confirm it.
+This is GigShield's core design innovation.
 
----
+Traditional insurance waits for a disruption to end, then calculates and disburses a lump sum. This creates delays, disputes about when a disruption started or ended, and leaves workers with nothing while the event is ongoing.
 
-## 7. Interval-Based Payout Model (Core Design)
+GigShield pays in fixed 10-minute intervals throughout the disruption. As long as the trigger condition holds and the worker remains active and validated, a payout is issued every 10 minutes — money moves in real time, as income is being lost.
 
-### Problem with Traditional Approach
+### Payout Formula
 
-- Requires exact start and end detection  
-- Delays payouts  
-- Not aligned with real-time income loss  
+```
+Interval Payout = (Hourly Income / 6) x Eligibility
 
----
+Hourly income  = ₹80
+Per interval   = ₹13.3 every 10 minutes
+```
 
-### Proposed Approach
+### Worked Example — 30-Minute Rain Event
 
-The system calculates payouts in **fixed intervals (every 10 minutes)**.
+| Time Window | Trigger Active | Worker Eligible | Payout |
+|---|---|---|---|
+| 6:50 – 7:00 PM | Yes | Yes | ₹13.3 |
+| 7:00 – 7:10 PM | Yes | Yes | ₹13.3 |
+| 7:10 – 7:20 PM | Yes | Yes | ₹13.3 |
+| Total | | | ₹40 |
 
----
-
-### Formula
-
-Interval Payout = (Hourly Income / 6) × Eligibility  
-
----
-
-### Example
-
-- Hourly income = ₹80  
-- Interval payout ≈ ₹13.3  
-
-Rain duration = 30 minutes:
-
-- 0–10 min → ₹13.3  
-- 10–20 min → ₹13.3  
-- 20–30 min → ₹13.3  
-
-Total payout = ₹40  
+Coverage cap: Payouts are limited to 50–60% of weekly income. This prevents moral hazard, keeps premiums affordable, and ensures pool sustainability.
 
 ---
 
-### Advantages
+## Activity Validation
 
-- Real-time compensation  
-- No dependency on disruption end  
-- Continuous validation  
-- Strong user trust  
+Before any interval payout is issued, the worker must satisfy all three conditions simultaneously in the current window:
 
----
+```
+1. GPS coordinates fall within the registered delivery zone
+2. App session is active at time of check
+3. At least one delivery attempt logged in the last 30 minutes
+```
 
-## 8. Activity Validation (Eligibility)
-
-User must be actively working:
-
-GPS within delivery zone AND  
-App session active AND  
-At least one delivery attempt in last 30 minutes  
+A worker who has gone home for the day, despite a live disruption in their zone, does not receive a payout.
 
 ---
 
-## 9. Fraud Detection System
+## Fraud Detection System
 
 ### Fraud Score Model
 
-Fraud Score =  
-w1*(GPS mismatch) +  
-w2*(No activity) +  
-w3*(Historical anomaly) +  
-w4*(Device tampering)  
+```
+Fraud Score = w1*(GPS zone mismatch)
+            + w2*(No activity signal)
+            + w3*(Historical claim anomaly)
+            + w4*(Device integrity flag)
+```
 
----
+Weights are calibrated based on observed fraud patterns. The model runs at every payout interval check.
 
 ### Decision Logic
 
-| Score | Action |
-|------|--------|
-| Low | Auto payout |
-| Medium | Delayed verification |
-| High | Block payout |
+| Score Band | Action |
+|---|---|
+| Low (0.0 – 0.3) | Automatic payout proceeds |
+| Medium (0.3 – 0.7) | Payout held; manual review triggered |
+| High (0.7 – 1.0) | Payout blocked; account flagged |
+
+### Fraud Scenarios Covered
+
+- GPS spoofing (fake location to appear within zone)
+- Session spoofing (app kept open with no real delivery activity)
+- Duplicate claim submission across devices
+- Coordinated fraud (multiple accounts sharing the same device fingerprint)
 
 ---
 
-### Fraud Cases Covered
+## Adverse Selection Prevention
 
-- GPS spoofing  
-- Fake inactivity  
-- Duplicate claims  
-- Device manipulation  
+Without guardrails, workers would purchase policies only when they know a storm is approaching — destroying the risk pool's economics. Three mechanisms prevent this:
 
----
-
-## 10. Adverse Selection Prevention
-
-- Purchase allowed only on Sunday  
-- Policy activation delay of 24 hours  
-- Dynamic pricing increases during high-risk periods  
+1. **Sunday-only purchase window** — policies can only be bought on Sundays, before the week begins
+2. **24-hour activation delay** — policy goes live Monday morning, not immediately after purchase
+3. **Dynamic pricing** — the Weather Risk multiplier increases in weeks with high-risk forecasts, making adverse selection financially unattractive
 
 ---
 
-## 11. Coverage Model
+## AI/ML Integration Plan
 
-Coverage = 50–60% of weekly income  
+### 1. Risk Prediction Model
 
-### Rationale
+Used to calculate the Weather Risk and Location Risk components of the multiplier.
 
-- Prevents misuse  
-- Keeps premiums affordable  
-- Ensures sustainability  
+- Inputs: Historical weather data per zone, historical disruption frequency, seasonal patterns
+- Output: Disruption probability for the coming week (0–1 score)
+- Approach: LightGBM classifier trained on historical IMD weather data and claim patterns
+- Cadence: Runs every Sunday to recalculate each active policy's multiplier for the coming week
 
----
+### 2. Dynamic Pricing Engine
 
-## 12. AI/ML Integration
+Ensures premiums remain actuarially sound week over week.
 
-### Risk Prediction
+- Adjusts the Risk Multiplier based on incoming forecast data, worker behavior consistency, and claim history
+- Prevents static pricing from under-pricing high-risk weeks or over-pricing low-risk weeks
+- Workers operating in historically safe zones pay less; zones with frequent disruptions price accordingly
 
-Input:
-- Historical weather data  
-- Location trends  
+### 3. Fraud Detection Model
 
-Output:
-- Disruption probability  
-
----
-
-### Dynamic Pricing
-
-- Adjusts risk multiplier weekly  
-- Based on:
-  - Forecast data  
-  - User behavior  
-  - Claim history  
+- Approach: Isolation Forest for anomaly detection on GPS patterns, session behavior, and claim frequency
+- Each worker builds a behavioral baseline over their first four weeks on the platform
+- Deviations from personal baseline automatically raise the Fraud Score
+- For Phase 1 MVP: rule-based thresholds function as a proxy until sufficient training data exists
 
 ---
 
-### Fraud Detection
+## Tech Stack
 
-- Anomaly detection  
-- Behavioral pattern analysis  
+| Layer | Technology | Justification |
+|---|---|---|
+| Frontend | React (Web MVP) | Fast iteration, stable demo environment, platform-agnostic |
+| Backend | FastAPI (Python) | Async support, clean ML integration, lightweight and fast |
+| Database | PostgreSQL | Relational model fits policy, claim, and payout data structure |
+| ML | Scikit-learn / LightGBM | Well-documented, sufficient for model complexity at this stage |
+| Weather APIs | OpenWeather + IMD mock | Free tier sufficient; mock fallback ensures demo stability |
+| AQI APIs | OpenAQ with mock fallback | Real data available; mock covers demo edge cases |
+| Payments | Razorpay test mode | Native UPI support, standard Indian payment infrastructure |
 
----
-
-## 13. System Architecture
-
-### Core Engines
-
-1. Risk Engine  
-2. Pricing Engine  
-3. Trigger Engine  
-4. Fraud Engine  
-5. Payout Engine  
+Production roadmap targets a React Native mobile app from Phase 2 onwards — enabling GPS background tracking, push notifications for payout confirmations, and native app session detection.
 
 ---
 
-### Data Flow
+## Development Plan
 
-External APIs → Trigger Engine → Decision Engine → Payout Engine  
+### Phase 1 — Ideation and Foundation (Current)
 
----
+- Complete system architecture and end-to-end workflow design
+- Weekly pricing model with full numerical validation
+- Parametric trigger definitions and multi-source consensus rule
+- Interval-based payout model design and justification
+- Fraud detection model design and scoring logic
+- Business model and loss ratio analysis
+- Web MVP scaffold with mock trigger simulation
 
-### Reliability
+### Phase 2 — Automation and Protection
 
-- Multi-source validation  
-- Outlier filtering  
-- Mock fallback  
+- Worker registration and onboarding flow
+- Policy creation with live dynamic premium calculation
+- Trigger engine with real API integration (OpenWeather, OpenAQ)
+- Claims management backend (zero-touch, fully automated)
+- 3–5 automated trigger types running end-to-end
+- Fraud scoring integrated into payout pipeline
 
----
+### Phase 3 — Scale and Optimise
 
-## 14. Tech Stack
-
-| Layer | Technology |
-|------|-----------|
-| Frontend | React (Web MVP) |
-| Backend | FastAPI (Python) |
-| Database | PostgreSQL |
-| ML | Scikit-learn / LightGBM |
-| APIs | Weather + AQI APIs |
-| Payments | Razorpay (test mode) |
-
----
-
-## 15. Business Model
-
-Revenue = Total Premium Collected  
-
-Cost = Total Payout + Operational Cost  
+- ML-based fraud detection model with behavioral baselines
+- Instant payout system via Razorpay test mode (UPI simulation)
+- Worker dashboard: earnings protected, active coverage, payout history
+- Admin dashboard: loss ratios, disruption forecast, risk zone analytics
+- Final demo with live simulated disruption triggering full automated payout flow
 
 ---
 
-### Loss Ratio
+## Business Model
 
-Loss Ratio = Payout / Premium  
+```
+Revenue    = Total Premium Collected
+Cost       = Total Payouts + Operational Cost
 
-Target = 0.6 – 0.8  
+Loss Ratio = Total Payout / Total Premium
+Target     = 0.6 – 0.8
+```
 
----
+A loss ratio of 0.6–0.8 means for every ₹100 collected in premiums, ₹60–₹80 is returned to workers as payouts. This is the industry-standard sustainability target for a worker-centric insurance product.
 
-### Sustainability
+### Sustainability Mechanisms
 
-- Partial coverage (≤60%)  
-- Dynamic pricing  
-- Risk segmentation  
-- Risk pooling  
-
----
-
-## 16. Development Plan (Phase 1)
-
-- Complete system design  
-- Define pricing model  
-- Implement trigger logic  
-- Build Web MVP with mock APIs  
+- Coverage cap (60% of weekly income) prevents moral hazard
+- Dynamic weekly pricing adjusts to actual forecast risk, not averages
+- Zone-level risk segmentation prevents low-risk workers from over-subsidizing high-risk zones
+- Large user base enables risk pooling — individual high-payout events are absorbed across the pool
 
 ---
 
-## 17. Key Differentiators
+## Why This Approach Stands Out
 
-1. Interval-Based Real-Time Payout  
-   Compensation happens during disruption, not after  
+**Zero-touch claims.** The worker never files anything. Disruption is detected, eligibility is validated, and money moves — automatically.
 
-2. Self-Adjusting Pricing  
-   Premium adapts based on user behavior and environment  
+**Real-time compensation.** Payouts happen during the disruption, not days after. A worker sitting in the rain at 7:00 PM sees money in their wallet by 7:10 PM. This is genuine income protection, not reimbursement.
 
-3. Predictive Risk Pricing  
-   Forecast-driven pricing before disruptions occur  
+**Actuarially grounded.** The pricing model, coverage cap, adverse selection guardrails, and loss ratio target are not approximations — they reflect how insurance economics actually work.
 
----
-
-## 18. Conclusion
-
-The proposed system provides:
-
-- Real-time income protection  
-- Fully automated payouts (no claims)  
-- Scalable and sustainable model  
-
-It is:
-
-- Technically feasible  
-- Economically viable  
-- Aligned with real-world gig worker needs  
+**Built for the actual user.** Ravi doesn't know what parametric insurance is. He doesn't need to. He sees: "₹70/week. Automatic protection. Money arrives when rain stops my work." That is the product.
