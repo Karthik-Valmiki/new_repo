@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-India's 5 million+ food delivery riders on Zomato and Swiggy have no income protection when environmental conditions, platform outages, or civic shutdowns make earning impossible. GigShield is a parametric income protection platform that monitors disruption signals in real time and automatically processes compensation to a rider's UPI wallet at regular intervals — no claim required, no paperwork. Three things distinguish it: platform app outages are covered as a first-class trigger; the Social Disruption Oracle pre-arms coverage the night before a bandh or curfew so riders are protected before they leave home; and adverse selection is blocked structurally through a 24-hour policy activation window and a continuity payout scale that makes opportunistic gaming financially unattractive. Coverage is personalized using a Reliability Score derived from each rider's Time Utilization, Delivery Efficiency, and Completion Rate relative to their zone peers. Tech stack: React PWA, Node.js, PostgreSQL, Python ML microservice, OpenWeatherMap, Tomorrow.io, IQAir, Razorpay.
+India's 1 million+ food delivery riders on Zomato and Swiggy have no income protection when environmental conditions, platform outages, or civic shutdowns make earning impossible. GigShield is a parametric income protection platform that monitors disruption signals in real time and automatically processes compensation to a rider's UPI wallet at regular intervals — no claim required, no paperwork. Three things distinguish it: platform app outages are covered as a first-class trigger; the Social Disruption Oracle pre-arms coverage the night before a bandh or curfew so riders are protected before they leave home; and adverse selection is blocked structurally through a 24-hour policy activation window and a continuity payout scale that makes opportunistic gaming financially unattractive. Coverage is personalized using a Reliability Score derived from each rider's Time Utilization, Delivery Efficiency, and Completion Rate relative to their zone peers. Tech stack: React PWA, Node.js, PostgreSQL, Python ML microservice, OpenWeatherMap, Tomorrow.io, IQAir, Razorpay.
 
 ---
 
@@ -40,7 +40,7 @@ India's 5 million+ food delivery riders on Zomato and Swiggy have no income prot
 
 ## 1. Problem Statement
 
-India has over 5 million platform-based food delivery workers operating on Zomato and Swiggy. These workers sustain a Rs. 50,000 crore digital economy, but they operate without any income safety net.
+India has over 1 million platform-based food delivery workers operating on Zomato and Swiggy. These workers sustain a Rs. 35,800 crore digital economy, but they operate without any income safety net.
 
 Their earnings are disrupted regularly by events entirely outside their control:
 
