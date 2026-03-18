@@ -4,7 +4,7 @@
 
 ---
 
-## Quick Summary (for judges)
+## Quick Summary
 
 GigShield is a **parametric income protection** product for food delivery riders (Zomato/Swiggy). It focuses on **income loss only** (not health/accident/vehicle) and pays automatically when disruption triggers are met.
 
