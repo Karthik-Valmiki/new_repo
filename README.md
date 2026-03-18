@@ -18,40 +18,6 @@ What the system does in one line: **detect disruption → verify with independen
 
 ---
 
-## Demo walkthrough (how to show this fast)
-
-If you have 3–6 minutes, this flow makes the product obvious:
-
-1. **Start with the Golden Rule**
-   - Say: “We cover income loss only. No health/accident/vehicle.”
-   - Point to the three triggers: weather/AQI, platform blackout, social disruption.
-
-2. **Show pricing in 15 seconds**
-   - Walk through the premium formula and the cap (premium never exceeds 6%).
-   - Use the included Suresh example (Rs.3,500/week → Rs.163 premium, max payout Rs.2,100).
-
-3. **Demo Scenario A: Platform outage payout (most intuitive)**
-   - “Assume Swiggy is down for 70 minutes during dinner peak.”
-   - Show trigger: uptime < 100% for > 45 minutes, within 19:00–22:30, rider active.
-   - Show payout math: (70 ÷ 60) × hourly rate × coverage %.
-   - Deliver the punchline: “No claim. Verified by third-party uptime. Paid to UPI in ~2 minutes after trigger confirmation.”
-
-4. **Demo Scenario B: AQI / weather payout (shows threshold logic)**
-   - “AQI > 300 for 2+ hours during shift” or “Rainfall > 50mm/hr for 1+ hour.”
-   - Emphasize why threshold + duration avoids fraud.
-
-5. **Demo Scenario C: Social disruption pre-arming (the differentiator)**
-   - “Bandh announced tonight. We pre-arm coverage by 11pm.”
-   - Next day: confirm via 3 sources + restaurant availability drop + rider GPS → payout triggers.
-
-If you have time for one slide, make it this:
-
-- **Inputs**: Weather/AQI + Uptime + News/Social + GPS + Restaurant availability
-- **Verification**: independent signals per trigger
-- **Output**: event ID + payout to UPI + dashboard log
-
----
-
 ## What GigShield Does That No One Else Does
 
 Most parametric insurance for gig workers stops at weather triggers and one-size payouts. GigShield goes further in three ways that most products miss in practice.
