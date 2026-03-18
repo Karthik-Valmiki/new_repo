@@ -147,6 +147,8 @@ Premium     = Base Rate x Risk Multiplier x (1.5 - R)
 | R = 0.5 (average) | 40% + 12.5% = 52.5% | Base x Risk x 1.0 (neutral) |
 | R = 0.0 (inactive) | 40% + 0% = 40% (floor) | Base x Risk x 1.5 (highest premium) |
 
+25% - Range ( 65% - 40% ) 
+
 A rider who is consistently active and completing orders relative to their zone peers pays less premium and receives higher coverage. A rarely active rider pays more and receives only the baseline floor coverage. The 40% floor ensures even low-activity riders have meaningful protection.
 
 From week five onward, zone averages are computed from the rider's specific registered pin codes rather than city-wide defaults, making the personalization genuinely local.
