@@ -127,7 +127,7 @@ From week three, GigShield shifts to a personalized model. The premium and cover
 Adjusted TU = User's Active Hours this week / Average Active Hours in their Zone
 Adjusted DE = User's Completed Orders this week / Average Orders in their Zone
 
-R           = sqrt(Adjusted TU x Adjusted DE)
+R = sqrt(Adjusted TU × Adjusted DE × Completion Rate) {Completion rate = Completed orders / Accepted orders}
 
 Coverage %  = 40% + (25% x R)
 Premium     = Base Rate x Risk Multiplier x (1.5 - R)
@@ -179,7 +179,7 @@ Weekly Premium = Base Rate x Risk Multiplier x (1.5 - R)
 Where:
   Base Rate        = 2% of rider's self-declared weekly earnings
   Risk Multiplier  = Zone risk score from environmental, AQI, and social forecasts
-  R                = sqrt(Adjusted TU x Adjusted DE), computed from the past week's data
+  R = sqrt(Adjusted TU × Adjusted DE × Completion Rate), computed from the past week's data 
 
 A higher R lowers the multiplier toward (1.5 - 1.0) = 0.5x (minimum).
 A lower R raises the multiplier toward (1.5 - 0.0) = 1.5x (maximum).
@@ -209,6 +209,7 @@ Weekly payout cap = Rs. 3,500 x 60%           = Rs. 2,100
 ### 5.2 Multi-Dimensional Trigger System
 
 GigShield monitors four independent disruption categories simultaneously, each with its own threshold and duration requirements.
+If multiple triggers activate simultaneously, payout is computed using the highest-paying trigger for that interval, without stacking.
 
 | Trigger Type | Signal Source | What It Covers |
 |---|---|---|
@@ -229,9 +230,9 @@ ENVIRONMENTAL TRIGGER — Both conditions must be met simultaneously:
       Wind speed   above 40km/hr (dusty winds or heavy winds)
   Condition 2 (Duration):  Sustained for more than 1 hour continuously
 
-AQI TRIGGER — Both conditions must be met simultaneously:
-  Condition 1 (Threshold): AQI above 300 in rider's active zone
-  Condition 2 (Duration):  Sustained for more than 2 hours during the rider's shift
+AQI TRIGGER — Both conditions must be met:
+  Condition 1: AQI above 300
+  Condition 2: Sustained reduction in order completion rate in the zone
 
 PLATFORM BLACKOUT TRIGGER — Both conditions must be met:
   Condition 1 (Threshold): Platform uptime below 100% (outage confirmed by third-party)
@@ -256,9 +257,10 @@ GigShield monitors platform uptime every five minutes via neutral third-party up
 
 ```
 Trigger Condition:
-  Platform uptime below 100% for more than 45 continuous minutes
+  Platform outage is defined as sustained inability to receive or complete orders,
+  validated using third-party outage signals and rider-side activity patterns
   AND time falls within food delivery peak window (12:00–14:30 OR 19:00–22:30)
-  AND rider was active or logged in on the specific affected platform at outage start
+  AND rider was active on the platform at outage start
   AND rider holds an active policy with the 24-hour activation window already passed
 
 Payout per interval:
@@ -304,7 +306,7 @@ Step 4: Disruption day — cross-verification via:
 Step 5: All three conditions confirmed — payout intervals begin automatically
 ```
 
-What makes this different from every other solution: all other parametric products are reactive. The Social Disruption Oracle predicts and pre-arms coverage before the disruption hits, turning parametric insurance from reactive to genuinely proactive.
+What makes this different from every other solution: all other parametric products are reactive.The Social Disruption Oracle enables early detection and pre-activation readiness rather than direct predictive payouts.
 
 ---
 
@@ -338,7 +340,15 @@ See Section 4 for the full R derivation.
 
 **Income Reference**
 
-The base rate of 2% is applied to the rider's self-declared weekly earnings bracket. Higher-earning riders pay more in absolute terms but at the same percentage rate, keeping the system fair across income levels. The 6% hard cap ensures no rider pays more than six percent of their weekly earnings regardless of stacked multipliers.
+Income Reference is bounded using a hybrid validation approach:
+
+Verified Weekly Income = min(
+  Self-declared income,
+  City-level benchmark for the rider’s category,
+  Historical earnings (if available)
+)
+
+This prevents over-declaration while preserving onboarding simplicity.
 
 ---
 
@@ -376,7 +386,7 @@ WHY NOT 100%:
                          = premiums stay affordable and pool remains sustainable
 ```
 
-The weekly payout cap is Rs. 1,200 regardless of coverage percentage.
+The weekly payout cap is dynamically derived from the rider’s coverage percentage and weekly income baseline. This ensures proportional protection while maintaining financial sustainability across different income brackets.
 
 ### Payout Example
 
@@ -400,7 +410,7 @@ Same rider in week 1 (coverage fixed at 40%):
 Per-interval payout = 0.5 hours x Rs. 90 x 40% = Rs. 18
 Total over 3 hours  = Rs. 18 x 6 = Rs. 108
 ```
-
+All payouts across any number of triggers within a week are cumulatively capped by the weekly payout cap derived from the rider’s coverage percentage.
 ---
 
 ## 8. Payout Logic
@@ -423,8 +433,21 @@ Payout Timeline:
   - First payout interval processed immediately at trigger confirmation
   - Subsequent intervals processed at fixed intervals while disruption continues
   - Payout stops when disruption ends (conditions drop below threshold)
-  - Payout also stops when rider's weekly coverage cap (Rs. 1,200) is exhausted
+  - Payout also stops when rider's weekly coverage cap is exhausted
   - Each payout interval is logged with the trigger event ID for audit and fraud tracking
+
+Multi Trigger Resolution Rule:
+
+If multiple trigger conditions are active simultaneously for the same rider
+during the same time interval, payouts are NOT stacked.
+
+Only the trigger that results in the highest payout for that interval
+is considered for compensation.
+
+This ensures:
+  - No double counting of income loss
+  - Prevention of payout stacking across correlated events
+  - Financial stability of the system under compound disruptions
 ```
 
 An SMS confirmation is sent at the first interval with the trigger event ID. Subsequent intervals within the same event are processed silently until the event closes.
@@ -462,7 +485,7 @@ GigShield is fraud-resistant by structural design. The core principle is that th
 
 **24-hour policy activation window.** A rider cannot purchase coverage moments before a known disruption and immediately claim. The waiting period structurally eliminates last-minute opportunistic purchases.
 
-**GPS-based zone validation.** The rider's GPS location at the time of disruption must match one of their registered delivery zones. A rider outside the declared disruption zone does not receive a payout.
+**GPS-based zone validation.** The rider's GPS location at the time of disruption must match one of their registered delivery zones. A rider outside the declared disruption zone does not receive a payout. GPS validation is combined with behavioral signals such as session activity and movement consistency to prevent spoofing.
 
 **Duplicate trigger blocking.** The system stores trigger event IDs and blocks duplicate payouts for the same event under the same policy.
 
@@ -505,6 +528,8 @@ The financial model is built around four principles that keep the platform solve
 **Premium scales with risk and rider performance.** Riders in high-risk zones during high-risk forecast weeks pay more. High-performing riders (high R) pay less. The model calibrates premium income to expected claim output at both the zone and individual level.
 
 **Weekly policy cycle limits liability.** The policy unit is a single week (Monday to Sunday). Maximum platform liability is always bounded by the current week's active policies. There is no long-tail multi-year exposure.
+
+Coverage and premium parameters are dynamically adjusted if projected loss ratios exceed acceptable thresholds.
 
 ```
 Loss ratio target: 0.40 to 0.60
@@ -572,7 +597,7 @@ ENVIRONMENTAL TRIGGER (Rain / Hail / Wind / Dust):
     Payout intervals begin at trigger confirmation
     Processed at 30-minute intervals while threshold conditions hold
     Stops when environmental conditions drop below threshold
-      or weekly coverage cap (Rs. 1,200) is exhausted
+      or weekly coverage cap (derived from coverage % × verified weekly income)is exhausted
 
 AQI TRIGGER:
   Threshold: AQI above 300 in rider's active zone
@@ -586,7 +611,7 @@ AQI TRIGGER:
     Stops when AQI drops below threshold or cap is exhausted
 
 PLATFORM BLACKOUT TRIGGER (Zomato / Swiggy — monitored independently):
-  Threshold: Platform uptime below 100% (confirmed by third-party monitor)
+  Threshold: Platform outage (confirmed by third-party monitor)
   Duration:  Sustained for more than 45 minutes
              AND within peak hours (12:00–14:30 or 19:00–22:30)
   Validation:
