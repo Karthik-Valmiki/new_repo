@@ -230,14 +230,11 @@ SOCIAL DISRUPTION TRIGGER (Proactive — night before):
 Most insurance products divide an annual premium by 52 and call it weekly pricing. That is not what GigShield does. Every Sunday night, the premium for the coming week is recalculated from scratch based on what is actually forecast to happen in that specific rider's zone.
 
 ```
-Weekly Premium = (Earnings x 1.5%)
-               x Weather Multiplier   (OpenWeatherMap — 7-day forecast)
-               x AQI Multiplier       (IQAir / CPCB — pollution forecast)
-               x Social Multiplier    (Oracle disruption confidence score)
-               x Active Hours         (part-time 0.6x → full-day 1.4x)
-               x Zone History         (pin code disruption frequency)
+Weekly Premium = Base Rate x Risk Multiplier
 
-Hard cap: Premium never exceeds 6% of weekly earnings
+Base Rate        = 2% of city-level estimated weekly earnings for the rider's bracket
+Risk Multiplier  = Zone risk score derived from environmental, AQI, and social disruption
+                   forecasts for the coming week
 ```
 
 The 1.5% base rate is derived actuarially — expected weekly payout (Rs.80 x 5 hours x 10% probability x 60% coverage) plus operating margin = Rs.50 for an average rider = 1.5% of Rs.3,500 weekly income.
@@ -252,13 +249,19 @@ Premium = Base Rate x Risk Multiplier x (1.5 - R)
   R = 0.0 → multiplier 1.5x (highest premium — inactive rider)
 ```
 
-**Example — Suresh, Delhi, full-time, Rs.3,500/week, heavy rain + AQI 320:**
+**Example — Suresh, Delhi, Zomato, returning user (R = 0.8), Rs. 3,500 per week, heavy environmental disruption week forecast:**
 
 ```
-Base Rate     = Rs.52.50  |  Weather = 1.21x  |  AQI = 1.40x
-Social = 1.00x  |  Active hours = 1.40x  |  Zone history = 1.30x
+Base Rate       = Rs. 3,500 x 2%              = Rs. 70
+Risk Multiplier = 1.30 (Delhi zone, severe week forecast)
+R               = 0.8
 
-Weekly premium = Rs.52.50 x 1.21 x 1.40 x 1.00 x 1.40 x 1.30 = Rs.163
+Premium         = Rs. 70 x 1.30 x (1.5 - 0.8)
+                = Rs. 70 x 1.30 x 0.70
+                = Rs. 63.70
+
+Coverage %      = 40% + (25% x 0.8)           = 60%
+Weekly payout cap = Rs. 3,500 x 60%           = Rs. 2,100
 ```
 
 **City-level zone defaults (weeks 1–4):**
@@ -306,8 +309,8 @@ GigShield caps income replacement at 65% maximum and never offers 100% — preve
 
 ```
 Week 1–2  → 40% of entitled payout released
-Week 3–4  → 70% of entitled payout released
-Week 5+   → 100% of entitled payout released
+Week 3–4  → 40% to 65% of entitled payout released
+Week 5+   →  max 65% entitled payout released
 
 Weekly payout cap = Coverage % x Verified Weekly Income (dynamic per rider)
 ```
@@ -334,7 +337,7 @@ Where:
 
 Payout Timeline:
   → Trigger confirmed → first interval paid immediately within 2 minutes
-  → Every 30 minutes while conditions remain above threshold
+  → Every regular intervals while conditions remain above threshold
   → Stops when conditions drop below threshold OR weekly cap exhausted
   → Weekly Cap = Coverage % x Verified Weekly Income (dynamic per rider)
   → Each interval logged with trigger event ID for audit and fraud tracking
@@ -472,30 +475,64 @@ REAL-TIME MONITORING  (always on)
 
 CLAIM TRIGGER  (zero rider action required)
 
-  BLACKOUT TRIGGER:
-  ├── Platform down > 45 mins within peak hours
-  ├── Rider active, waiting for orders, confirmed via GPS + app session
-  └── Instant payout → UPI within 2 minutes
+ENVIRONMENTAL TRIGGER (Rain / Hail / Wind / Dust):
+  Threshold: Rainfall above 50mm/hr, OR hailstorm alert confirmed,
+             OR wind speed above 40km/hr in rider's registered zone
+  Duration:  Sustained for more than 1 hour continuously
+  Validation:
+    Rider GPS confirms presence in the affected zone
+    Active policy confirmed; 24-hour activation window has passed
+    No duplicate event ID for this trigger
+  Action:
+    Payout intervals begin at trigger confirmation
+    Processed at 30-minute intervals while threshold conditions hold
+    Stops when environmental conditions drop below threshold
+      or weekly coverage cap (derived from coverage % × verified weekly income)is exhausted
 
-  WEATHER / AQI TRIGGER:
-  ├── Threshold: Rainfall > 50mm/hr OR hailstorm confirmed OR wind > 40km/hr OR AQI > 300
-  ├── Duration: Sustained > 1 hour (weather) / 2 hours (AQI) continuously
-  ├── Rider GPS confirms zone presence
-  └── Interval payout begins → 30-min intervals → UPI within 2 mins of trigger
+AQI TRIGGER:
+  Threshold: AQI above 300 in rider's active zone
+  Duration:  Sustained for more than 2 hours during the rider's shift
+  Validation:
+    Rider GPS confirms zone presence
+    Active policy confirmed; 24-hour activation window has passed
+  Action:
+    Payout intervals begin at trigger confirmation
+    Processed at 30-minute intervals while AQI remains above 300
+    Stops when AQI drops below threshold or cap is exhausted
 
-  SOCIAL DISRUPTION TRIGGER:
-  ├── Night before: confidence > 75% → pre-activation alert sent to rider
-  ├── Disruption day: 3 sources confirm + restaurants unavailable > 80%
-  ├── Rider GPS confirms zone presence
-  └── Instant payout → UPI within 2 minutes
+PLATFORM BLACKOUT TRIGGER (Zomato / Swiggy — monitored independently):
+  Threshold: Platform outage (confirmed by third-party monitor)
+  Duration:  Sustained for more than 45 minutes
+             AND within peak hours (12:00–14:30 or 19:00–22:30)
+  Validation:
+    Rider was logged into the specific affected platform at outage start
+    Active policy confirmed; 24-hour activation window has passed
+    Zone match confirmed
+  Action:
+    Payout intervals begin at trigger confirmation
+    Processed at 30-minute intervals while outage continues
+    Stops when platform uptime restores or cap is exhausted
 
-  ALL TRIGGERS:
-  ├── Eligibility: active policy + 24hr window passed + no duplicate + GPS zone match
-  ├── Interval payout = 0.5 hrs x Hourly Rate x Coverage %
-  ├── Processed every 30 minutes while disruption conditions hold
-  ├── Stops when conditions end OR weekly cap exhausted
-  ├── Multi-trigger rule: if two triggers active simultaneously, highest payout wins
-  └── SMS at first interval with event ID — subsequent intervals silent
+SOCIAL DISRUPTION TRIGGER:
+  Night before:
+    Oracle confidence crosses 75%
+    Pre-activation alert sent to riders in affected zones via SMS and app notification
+  Disruption day — three conditions confirmed simultaneously:
+    (a) Three independent news or government sources confirm disruption is active
+    (b) Restaurant availability in zone drops above 80%
+    (c) Rider GPS confirms presence in the affected zone
+  Validation:
+    Active policy confirmed; 24-hour activation window has passed
+  Action:
+    All three conditions confirmed — payout intervals begin automatically
+    Processed at 30-minute intervals while disruption conditions hold
+    Stops when restaurant availability recovers or cap is exhausted
+
+ALL TRIGGERS — Common Rule:
+  Per-interval payout = Interval Duration (hrs) x Hourly Income x Coverage %
+  SMS sent at first interval with trigger event ID
+  Subsequent intervals within the same event processed silently
+  Event closes when conditions end or weekly cap is exhausted
 
 ────────────────────────────────────────────────────────────────
 
