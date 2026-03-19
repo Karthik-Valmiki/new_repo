@@ -1,6 +1,6 @@
 # GigShield — AI-Powered Parametric Income Protection for India's Food Delivery Workers
 
-> **Hackathon Phase 1 Submission | Problem Statement: AI-Powered Insurance for India's Gig Economy**
+> **Hackathon Phase 1 Submission | Problem Statement: AI-Powered Parametric Insurance for India's Gig Economy**
 
 ---
 
