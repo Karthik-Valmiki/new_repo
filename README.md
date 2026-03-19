@@ -60,7 +60,7 @@ When any disruption hits, the rider absorbs the full financial loss. There is no
 
 ## 3. What GigShield Does
 
-GigShield watches for disruptions in real time, checks them against independent sources, and sends income compensation directly to the rider's UPI wallet every 30 minutes. No claim needed. No paperwork.
+GigShield watches for disruptions in real time, checks them against independent sources, and sends income compensation directly to the rider's UPI wallet every regular intervals. No claim needed. No paperwork.
 
 The rule is simple: if a disruption is confirmed by independent third-party data and the rider was working in the affected zone with an active policy, they get paid — for as long as the disruption lasts.
 
