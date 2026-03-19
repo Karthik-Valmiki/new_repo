@@ -175,6 +175,7 @@ Premium         = Base Rate × Risk Multiplier × (1.5 - R)
 ```
 
 R is clamped to 1.0. This ensures coverage never exceeds 65% and the premium multiplier never falls below 0.5x.
+Multiplicative form penalizes imbalance across dimensions. Square root normalizes extreme values and prevents domination by any single factor.
 
 | R Value | Coverage | Premium Effect |
 |---|---|---|
@@ -630,230 +631,152 @@ The hackathon MVP uses rule-based implementations wherever full ML models requir
 
 ## 20. Adversarial Defense & Anti-Spoofing Strategy
 
-> **Market Crash Threat Brief:** A coordinated syndicate of 500 delivery workers used GPS-spoofing applications to fake presence in a red-alert weather zone while resting safely at home — triggering mass false payouts and draining a competitor platform's liquidity pool in hours. Simple GPS verification is officially obsolete. This section documents GigShield's architectural response.
+> **Market Crash Threat Brief:** A coordinated syndicate of 500 delivery
+> workers used GPS-spoofing apps to fake presence in a red-alert weather
+> zone while resting at home — triggering mass false payouts and draining
+> a competitor platform's liquidity pool. Simple GPS verification is
+> officially obsolete. Below is GigShield's architectural response.
 
-GigShield is structurally resilient to this attack because **payouts are never triggered by user-controlled signals**. The entire validation pipeline is grounded in independent third-party data, real economic activity, device-level behavioral signals, and population-level anomaly detection. A fraudster can fake a GPS coordinate. They cannot simultaneously fake a government weather API, a third-party platform uptime monitor, accelerometer output consistent with riding a motorcycle through flooded streets, cell tower handoff patterns, and delivery platform activity — across 500 devices in the same 15-minute window.
+The attack only works on systems where location equals eligibility.
+In GigShield, it doesn't. Here is why.
 
 ---
 
-### 20.1 Why GigShield Was Already Structurally Ahead
+### 20.1 The Differentiation — Genuine Rider vs. GPS Spoofer
 
-The market crash exploited a single-signal system. GigShield's parametric triggers were designed from day one to never rely on GPS as a primary validation input. GPS is only a zone-matching component. The actual trigger fires from independent sources no rider can manipulate:
+GigShield's parametric triggers were never built around GPS as the
+primary signal. GPS is only a zone-matching check. What actually fires
+a payout is entirely outside a rider's control:
 
-| Trigger type | What actually fires the payout | GPS role |
+| Trigger | What fires the payout | Can a rider fake this? |
 |---|---|---|
-| Weather / Hailstorm | OpenWeatherMap + Tomorrow.io meteorological feeds | Zone matching only — not the trigger |
-| AQI | IQAir / CPCB government sensor network | Zone matching only — not the trigger |
-| Platform blackout | DownDetector + custom uptime scraper (third-party) | Zone match + delivery attempt required |
-| Social disruption | 3 independent news/govt sources + restaurant availability collapse | Zone match + oracle pre-arms night before |
+| Weather / Hailstorm | OpenWeatherMap + Tomorrow.io meteorological feeds | No |
+| AQI | IQAir / CPCB government sensor network | No |
+| Platform blackout | DownDetector + custom third-party uptime scraper | No |
+| Social disruption | 3 independent news/govt sources + restaurant availability collapse | No |
 
-A fraudster cannot create a hailstorm on OpenWeatherMap, take a Zomato server offline on DownDetector, or make restaurant availability data collapse across their zone. **The triggers are structurally unfakeable.** GPS spoofing only affects zone eligibility — and the adversarial defense layer is specifically designed to defeat that too.
+A fraudster sitting at home cannot manufacture a hailstorm on
+OpenWeatherMap, take Zomato offline on DownDetector, or collapse
+restaurant availability data across their zone. The triggers are
+structurally unfakeable. GPS spoofing only affects the zone-match
+check — and GigShield has multiple layers that defeat that too.
 
----
+**Beyond GPS — what the system actually checks:**
 
-### 20.2 The Differentiation — Genuine Rider vs. GPS Spoofer
+Even if a disruption is genuinely active, eligibility requires
+demonstrated working behavior — not just presence:
 
-The core problem with GPS alone: a spoofed coordinate from someone lying at home looks identical to a genuine coordinate from a rider stranded in a hailstorm. GigShield resolves this by building a **Behavioral Plausibility Score (BPS)** from a stack of device-level signals that spoofing apps cannot simultaneously fabricate.
-
-#### How spoofing apps work — and why the sensor stack defeats them
-
-Spoofing apps like Fake GPS or Mock Locations inject a fake coordinate at the **Android location API layer**. They mock one signal. They cannot simultaneously modify what the accelerometer reports, degrade the WiFi signal strength, change which cell tower the device is registered to, or inflate battery consumption. These signals operate at a lower OS level and are read independently.
-
-#### The BPS Signal Stack
-
-| Signal | Genuine disruption pattern | Spoofing pattern (at home) |
-|---|---|---|
-| GPS accuracy radius | ±40–80m — rain and signal interference degrade accuracy | ±3–5m — spoofing apps lock to artificial precision |
-| Accelerometer output | Irregular bursts — road vibration, stops, bumps | Flat or artificial oscillation — not a moving bike |
-| Cell tower ID sequence | Changes as rider moves through zone (high entropy) | Fixed single home tower, zero handoffs |
-| Network signal strength | Degraded — towers overloaded in storm zones | Full-strength home WiFi or 4G LTE |
-| Network origin type | Mobile data (tower IDs shift continuously) | Residential WiFi (fixed IP address) |
-| App battery draw | Elevated — maps, GPS, navigation all active | Low — idle app with mocked location |
-| App session pattern | Short bursts — checking orders, navigating, re-routing | Long stationary open session, no platform interaction |
-
-#### BPS Formula
-
-```
-Behavioral Plausibility Score (BPS):
-
-  BPS = w1 × MotionConsistency
-      + w2 × NetworkOriginScore
-      + w3 × CellTowerEntropyScore
-      + w4 × GPSAccuracyScore
-      + w5 × DeliveryActivityScore
-      + w6 × PeerZoneConsistency
-
-Where:
-  MotionConsistency     = std(speed over 10-min windows) in expected range
-                          for bad-weather riding (slow but non-zero movement)
-  NetworkOriginScore    = 1.0 if mobile data, 0.3 if residential WiFi
-  CellTowerEntropyScore = Shannon entropy of tower IDs over session window
-                          High entropy = moving rider / Low = stationary at home
-  GPSAccuracyScore      = 1.0 if accuracy radius ≥ 25m (weather-degraded)
-                          0.2 if accuracy < 10m (spoofing apps lock artificially tight)
-  DeliveryActivityScore = 1.0 if delivery attempt in past 30 min, 0.0 if none
-  PeerZoneConsistency   = fraction of active zone peers also showing disruption signals
-
-BPS range: 0.0 = certain fraud → 1.0 = certain genuine rider
-Weights w1–w6: trained on synthetic data (MVP); retrained on real claim data in Phase 2
-```
-
-Each signal individually is ambiguous. The stack in combination is extremely difficult to fake at scale.
+- For platform blackout: rider must have a logged delivery attempt
+  in the last 30 minutes before the outage. Someone who opened the
+  app purely to collect a payout is ineligible.
+- For all triggers: the Reliability Score (R) is built from Time
+  Utilization, Delivery Efficiency, and Completion Rate over prior
+  weeks. A fraudster with no real delivery history naturally sits at
+  R = 0.0 — meaning 40% coverage floor, highest premium multiplier
+  (1.5x), and minimum payout per interval. The economics of fraud
+  are unattractive before any detection logic fires.
+- The personal loss ratio monitor tracks total payouts divided by
+  total premiums per rider. A ratio exceeding 1.8x triggers a
+  compounding surcharge — making repeated gaming progressively
+  expensive until it becomes a net loss by month 5.
 
 ---
 
-### 20.3 The Data — What Catches a Coordinated Ring of 500
+### 20.2 The Data — What Catches a Coordinated Ring
 
-Individual GPS spoofing is difficult to prove in isolation. A coordinated ring of 500 people is dramatically easier to detect because **the coordination itself becomes the signal**. GigShield's ring detection layer runs in parallel with individual BPS validation and looks for the following:
+Individual spoofing is hard to prove in isolation. A ring of 500
+people is easy to detect because their coordination becomes the
+signal. GigShield's fraud anomaly engine (Isolation Forest, Phase 2)
+monitors at the population level, not just the individual level.
 
-#### Signal 1 — Temporal Clustering
+**Temporal clustering:** Genuine disruptions produce staggered
+triggers spread over 60–180 minutes as riders encounter conditions
+at different times across a zone. A Telegram-coordinated ring
+produces a spike — many riders in the same zone triggering within
+a narrow window simultaneously. This pattern does not appear in
+genuine disruptions and flags immediately as a ring-candidate event.
 
-Genuine disruptions produce staggered triggers: riders log in at different times, micro-conditions vary by pin-code, and triggers fire with natural spread over 60–180 minutes. A fraud ring coordinating over Telegram produces a completely different signature.
+**Zone peer comparison:** Every claim is benchmarked against active
+riders in the same zone at the same time. If a large group triggers
+payouts while peer riders in that zone show normal delivery activity
+— no slowdown, no delivery time spike, no restaurant availability
+drop — the system flags this as a coordinated anomaly. A genuine
+disruption affects all riders in the zone. A spoofed one doesn't.
 
-```
-Temporal Ring Detection Rule:
+**Duplicate trigger blocking:** Trigger event IDs are stored and
+checked. The same event cannot produce duplicate payouts under the
+same policy. Ring members attempting to trigger the same event
+multiple times are blocked structurally.
 
-  IF (riders triggering payouts in the same zone within a 15-minute window) > 20
-  AND (zone peer delivery activity shows no corresponding slowdown)
-  THEN:
-    → FLAG as ring-candidate event
-    → Zone enters audit mode for 72 hours
-    → All new claims from zone route to Grace Flow (not instant payout)
-
-Baseline: genuine disruptions spread triggers over 60–180 minutes.
-Fraud rings concentrate triggers in < 15 minutes.
-```
-
-#### Signal 2 — Device Fingerprint Clustering
-
-Fraud rings distributed via Telegram typically use a single spoofing APK shared by the ring operator. GigShield hashes and stores a composite device fingerprint at registration:
-
-```
-Device Fingerprint = hash(
-  device_model + android_version + screen_resolution +
-  installed_font_set + GPU_renderer_string + display_density
-)
-
-Ring Detection Rule:
-  IF cluster of ≥ 5 registered riders share device fingerprint similarity ≥ 80%
-  AND they trigger payouts within the same event window
-  THEN:
-    → FLAG cluster for human review
-    → Surcharge applied to all cluster members on next premium cycle
-```
-
-#### Signal 3 — Network Origin Correlation
-
-A genuine road rider sends requests from mobile data towers whose IDs shift as they move. A rider at home sends requests from a fixed residential IP over WiFi.
-
-```
-Network Fraud Threshold:
-
-  IF (% of simultaneous zone claims originating from residential WiFi) > 40%
-  THEN:
-    → Zone enters audit mode
-    → All WiFi-origin claims for this event → Grace Flow
-
-Genuine disruption baseline: < 10% of claims originate from residential WiFi.
-A 40%+ WiFi ratio during a claimed road disruption is a near-certain fraud signal.
-```
-
-#### Signal 4 — Reliability Score as a Structural Economic Deterrent
-
-This is GigShield's most important built-in anti-fraud mechanism. Because coverage and premiums are tied to R, the economic return on fraud is lowest for exactly the riders most likely to attempt it — new accounts with no history.
-
-```
-Fraud attempt economic analysis:
-
-  Fraudster profile: new rider, R = 0.0, no delivery history
-    Coverage %      = 40%  (minimum floor)
-    Premium         = Base Rate × Risk Multiplier × 1.5  (maximum multiplier)
-    Max per-interval payout = 0.5 hrs × ₹80 (city baseline) × 40% = ₹16
-
-  To reach weekly cap, fraudster must pass all BPS checks across
-  multiple consecutive 30-minute intervals.
-  Any signal inconsistency stops payouts immediately.
-  Economic verdict: low ceiling + high detection risk = irrational.
-
-  Contrast — genuine returning rider (week 5+, R = 0.8):
-    Coverage %      = 60%
-    Premium         = Base Rate × Risk Multiplier × 0.7  (reduced multiplier)
-    Per-interval    = 0.5 hrs × ₹90 × 60% = ₹27
-```
-
-The R score does not just detect fraud — it makes fraud economically unattractive before detection even fires.
-
-#### Signal 5 — Social Media Ring Detection
-
-The same monitoring infrastructure that powers the Social Disruption Oracle is repurposed for ring detection. The system monitors for Telegram channels and WhatsApp groups sharing content that combines the GigShield brand with spoofing app names or payout exploitation language.
-
-```
-If active coordination channel detected:
-  → All claims from affected zone enter Grace Flow for next 72 hours
-  → Device fingerprints cross-checked against phone numbers active
-     in the detected channel (Phase 2 data partnership)
-  → Human review team alerted with channel evidence
-```
+**The 24-hour activation window** closes the most obvious attack
+vector entirely. A rider who reads a bandh announcement tonight and
+buys a policy cannot claim against it tomorrow morning. Organized
+rings cannot exploit a known upcoming disruption through last-minute
+mass sign-ups.
 
 ---
 
-### 20.4 The UX Balance — Flagging Bad Actors Without Punishing Honest Workers
+### 20.3 The UX Balance — Flagged Claims Without Penalizing Honest Workers
 
-This is the hardest design problem. A genuine rider caught in a severe storm in Delhi in November may simultaneously have: degraded GPS accuracy from signal interference, network timeouts from overloaded towers, a stationary accelerometer pattern because they are sheltering under a bridge, and a cell tower that has not changed because they have not moved in 40 minutes. These are also signatures of spoofing.
+Fraud flags must never punish a genuine rider who simply has a bad
+network connection during a storm. GigShield handles this through
+the existing fraud score pipeline:
 
-GigShield resolves this through a **three-tier claim flow** driven by the BPS:
+**Flagged claims are held — not denied.** A suspicious claim enters
+a review state. The payout is not rejected; it is paused while the
+system gathers more signal passively. No rider action is required.
 
-| BPS Score | Tier | Rider experience | System action |
-|---|---|---|---|
-| BPS > 0.7 (low fraud risk) | Tier 1 — Instant | Payout within 2 minutes, no friction | Standard instant payout, silent background logging |
-| BPS 0.3–0.7 (uncertain) | Tier 2 — Grace Flow | "Your payout is being processed" — 2-hr passive re-verification | Escrow held, passive signal monitoring, auto-releases if signals resolve |
-| BPS < 0.3 (high fraud risk) | Tier 3 — Review | "Your payout is under review — update within 24 hours" | Block + human review queue, surcharge if fraud confirmed |
+**Network drops are treated as neutral.** A failed re-verification
+signal during a confirmed weather disruption does not count against
+the rider. The system accounts for the fact that bad conditions
+degrade connectivity — that is the whole point of the product.
 
-#### Tier 1 — Instant Payout (BPS > 0.7)
+**Honest riders are insulated by their history.** A returning rider
+with a high R score and a clean personal loss ratio is extremely
+unlikely to cross the fraud score threshold on a single genuine
+claim. The score is built from behavioral history across weeks —
+a one-off ambiguous signal does not override a strong track record.
 
-Riders with a clean behavioral signal, consistent personal history, and no ring-candidate flags receive their payout within 2 minutes as normal. Validation runs silently in the background. The vast majority of legitimate returning riders — especially those with established R scores — never experience any friction.
+**The R score naturally separates genuine riders from bad actors.**
+A legitimate rider who has been active for weeks carries real Time
+Utilization, Delivery Efficiency, and Completion Rate data. A
+fraudster who joined to exploit a disruption has none of this. The
+two profiles produce very different fraud scores without requiring
+any manual intervention.
 
-#### Tier 2 — Grace Flow (BPS 0.3–0.7)
-
-Rather than blocking the payout or asking the rider to submit documents (which violates GigShield's zero-claim-form principle), the system:
-
-1. **Holds the payout in escrow immediately.** Rider receives: *"Your payout of ₹X is being processed. You'll receive it shortly."* Not denied. Processing.
-2. **Opens a silent 2-hour passive re-verification window.** The system continues monitoring without any rider action: does the GPS trace show movement? Does the network origin shift from WiFi to mobile data? Does the rider complete a delivery attempt?
-3. **Auto-releases the escrow** if signals resolve cleanly — rider moved, completed a delivery, or conditions ended and they resumed work. No rider action required at any point.
-4. **If signals remain ambiguous after 2 hours**, a human reviewer sees the full context and makes a decision within 4 hours. If the claim is found genuine, the payout releases in full with a priority UPI transfer.
-
-> **The rider is never asked to prove their innocence.** The system gathers evidence passively. A 2-hour hold is the maximum friction a legitimate rider ever experiences — and even that resolves automatically in most cases.
-
-#### Tier 3 — Block and Flag (BPS < 0.3)
-
-High-confidence fraud cases — particularly those also flagged by ring detection — are blocked and routed to human review. Rider receives a neutral message with no accusation language. If review determines the claim was genuine, the payout releases in full immediately with a priority transfer and an apology credit.
-
-#### Network Drop Protection — The Critical Edge Case
-
-A genuine rider in a severe storm may experience network drops that cause re-verification calls to fail. The Grace Flow handles this explicitly:
-
-- **Failed or timed-out re-verification calls are treated as neutral** — a timeout does not increase the fraud score
-- **If measured network quality in the rider's zone is consistently degraded** (evidenced by cell tower signal data already being collected), the re-verification window extends automatically by 1 hour
-- **Default to pay-if-uncertain, recover-later for riders with R ≥ 0.6** — the personal loss ratio monitor catches any sustained abuse pattern over time; one ambiguous payout to a long-standing legitimate rider is an acceptable and recoverable risk
+**If a flag is cleared, the rider receives the full payout** for
+the period the disruption was confirmed active. No income is
+permanently lost due to a false positive.
 
 ---
 
-### 20.5 Why the Fraud Ring Cannot Win
+### 20.4 Why the Fraud Ring Cannot Win Against GigShield
 
-To drain GigShield's liquidity pool the way the syndicate drained the competitor platform, a coordinated ring would need to clear all six of these barriers simultaneously:
+To drain GigShield's liquidity pool the way the syndicate drained
+the competitor platform, a coordinated ring would need to clear
+all of the following simultaneously:
 
-1. **Wait 24 hours** after buying a policy before any disruption event can be claimed
-2. **Trigger an independent third-party source** — manufacture a hailstorm on OpenWeatherMap, take Zomato offline on DownDetector, or collapse restaurant availability data in their zone *(structurally impossible)*
-3. **Pass the full BPS stack in real time** — accelerometer output consistent with riding, cell tower entropy consistent with movement, network origin on mobile data, GPS accuracy degraded as expected in bad weather, recent delivery attempt logged
-4. **Avoid the temporal clustering alarm** that fires when more than 20 riders in the same zone trigger within 15 minutes
-5. **Have a high enough R score** (built over weeks of genuine delivery activity) to receive more than the 40% minimum coverage payout
-6. **Sustain profitability** despite compounding loss ratio surcharges on their premium each time their personal payout-to-premium ratio exceeds 1.8x
+1. Wait the mandatory 24-hour activation window before any claim
+   is possible
+2. Trigger a real independent third-party source — a weather event
+   on OpenWeatherMap, a platform outage on DownDetector, or a
+   restaurant availability collapse in their zone
+3. Pass the delivery activity check — a logged attempt on the
+   platform in the 30 minutes prior to the trigger
+4. Avoid the zone peer comparison alarm that fires when a large
+   group triggers while no corresponding delivery slowdown is
+   detected in the zone
+5. Build enough R score history to receive anything beyond the
+   40% minimum coverage at the maximum 1.5x premium multiplier
+6. Do all of this profitably despite the personal loss ratio
+   monitor applying compounding surcharges after the 1.8x threshold
 
-Each of these is a separate structural barrier. The combination makes coordinated fraud not merely detectable — it makes it **economically irrational before detection even fires.**
+Each of these is a separate structural barrier that exists in the
+product for reasons entirely unrelated to fraud. The fraud
+resistance is a byproduct of designing the product honestly —
+not a bolt-on detection layer. That is what makes it durable.
 
----
-
-### 20.6 Defense Summary
+### 20.5 Defense Summary
 
 | Threat vector | Detection mechanism | Impact on honest rider |
 |---|---|---|
