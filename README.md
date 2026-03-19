@@ -151,6 +151,8 @@ New users receive genuine coverage and real payouts. The calibration ensures joi
 ### 7.2 Returning Users (Week 3 Onward)
 
 From week 3, each rider's premium and coverage depend on their own performance data. The system calculates a **Reliability Score (R)** — a number between 0 and 1 based on how active and effective the rider has been relative to others in their zone:
+TU - Time Utilization
+DE - Delivery Efficiency
 
 ```
 Adjusted TU     = Rider's active hours this week / Zone average active hours
