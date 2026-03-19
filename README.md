@@ -37,7 +37,7 @@ India's food delivery riders on Zomato and Swiggy have no income protection when
 
 GigShield is a parametric income protection platform built specifically for these riders. When a disruption is confirmed through independent data, income compensation goes to the rider's UPI wallet automatically — no claim, no paperwork, no delay.
 
-Three things make it different from what else exists: it covers platform app downtime as a first-class trigger; it pre-arms coverage the night before a predicted bandh so riders are protected before they leave home; and it structurally prevents gaming through a 24-hour activation window and a continuity scale that makes last-minute purchasing unprofitable. Coverage adjusts per rider based on a Reliability Score derived from their own activity data.
+Three things make it different from what else exists: it covers platform app downtime as a first-class trigger; it pre-arms coverage message via notificatino the night before a predicted bandh so riders are protected before they leave home; and it structurally prevents gaming through a 24-hour activation window and a continuity scale that makes last-minute purchasing unprofitable. Coverage adjusts per rider based on a Reliability Score derived from their own activity data.
 
 Stack: React PWA, Node.js, PostgreSQL, Python ML microservice, OpenWeatherMap, Tomorrow.io, IQAir, Razorpay.
 
