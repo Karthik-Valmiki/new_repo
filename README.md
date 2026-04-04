@@ -4,6 +4,24 @@
 
 ---
 
+## Pages at a Glance
+
+| Page | What it shows |
+|---|---|
+| Landing | Product overview, what is covered, how it works, sign-up CTA |
+| Register | 3-step flow: phone → OTP → details |
+| Login | Phone + password, straight to dashboard |
+| Dashboard | Greeting, R-score, tenure, policy status, risk forecast, quick actions |
+| Policy | Coverage status, premium, cap usage bar, what is covered, how payouts work |
+| Payment | Quote confirmation, UPI payment simulation, activation countdown |
+| Claims | Payout history, summary stats, zero-touch claims explainer |
+| Simulator | Fire triggers, see mock API responses, watch payouts generate |
+| Profile | Tier badge, score breakdown, financial summary, account details |
+| Notifications | Payout alerts and disruption notifications |
+
+---
+
+
 ## What This Product Does
 
 India's food delivery riders lose income every time something outside their control hits — a hailstorm, a toxic AQI day, a platform outage, a city bandh. There is no existing system that compensates for this. VERO fixes that.
@@ -38,11 +56,11 @@ For the demo, use any of these pre-seeded returning riders. These accounts alrea
 
 | Name | Phone | Password | City | Platform | Profile |
 |---|---|---|---|---|---|
-| Arjun Mehta | +919000000001 | demo1234 | Mumbai | Zomato | High performer |
-| Priya Nair | +919000000002 | demo1234 | Bengaluru | Swiggy | Average performer |
-| Ravi Kumar | +919000000003 | demo1234 | Delhi | Zomato | Low performer |
-| Deepa Krishnan | +919000000004 | demo1234 | Chennai | Swiggy | Mid-high performer |
-| Suresh Babu | +919000000005 | demo1234 | Hyderabad | Zomato | Recovering performer |
+| Arjun Mehta | +919000000001 | vero1234 | Mumbai | Zomato | High performer |
+| Priya Nair | +919000000002 | vero1234 | Bengaluru | Swiggy | Average performer |
+| Ravi Kumar | +919000000003 | vero1234 | Delhi | Zomato | Low performer |
+| Deepa Krishnan | +919000000004 | vero1234 | Chennai | Swiggy | Mid-high performer |
+| Suresh Babu | +919000000005 | vero1234 | Hyderabad | Zomato | Recovering performer |
 
 Log in with any of these and you will immediately see different premium amounts and coverage percentages — that difference is the ML engine at work.
 
@@ -237,19 +255,4 @@ The zone risk multiplier is layered on top — a rider in a historically high-di
 - Personal loss ratio monitor — if total payouts exceed 1.8× total premiums paid, a compounding surcharge applies to the following week's premium
 - Duplicate trigger blocking — the same event ID cannot produce duplicate payouts under the same policy
 
----
 
-## Pages at a Glance
-
-| Page | What it shows |
-|---|---|
-| Landing | Product overview, what is covered, how it works, sign-up CTA |
-| Register | 3-step flow: phone → OTP → details |
-| Login | Phone + password, straight to dashboard |
-| Dashboard | Greeting, R-score, tenure, policy status, risk forecast, quick actions |
-| Policy | Coverage status, premium, cap usage bar, what is covered, how payouts work |
-| Payment | Quote confirmation, UPI payment simulation, activation countdown |
-| Claims | Payout history, summary stats, zero-touch claims explainer |
-| Simulator | Fire triggers, see mock API responses, watch payouts generate |
-| Profile | Tier badge, score breakdown, financial summary, account details |
-| Notifications | Payout alerts and disruption notifications |
