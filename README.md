@@ -12,7 +12,7 @@
 | Register | 3-step flow: phone → OTP → details |
 | Login | Phone + password, straight to dashboard |
 | Dashboard | Greeting, R-score, tenure, policy status, risk forecast, quick actions |
-| Policy | Coverage status, premium, cap usage bar, what is covered, how payouts work |
+| Policy | Coverage status, Dynamic premium, cap usage bar, what is covered, how payouts work |
 | Payment | Quote confirmation, UPI payment simulation, activation countdown |
 | Claims | Payout history, summary stats, zero-touch claims explainer |
 | Simulator | Fire triggers, see mock API responses, watch payouts generate |
