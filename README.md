@@ -1,258 +1,346 @@
-# VERO — Visual Guide
-### Parametric Income Protection for India's Food Delivery Workers
-> Theme: **Protect the Worker**
+# VERO — Implementation Approach
+### Theme: "Perfect for Your Worker"
+> What to build, how to build it, what to watch out for.
 
 ---
 
-## Pages at a Glance
+## What We're Actually Starting From
 
-| Page | What it shows |
-|---|---|
-| Landing | Product overview, what is covered, how it works, sign-up CTA |
-| Register | 3-step flow: phone → OTP → details |
-| Login | Phone + password, straight to dashboard |
-| Dashboard | Greeting, R-score, tenure, policy status, risk forecast, quick actions |
-| Policy | Coverage status, Dynamic premium, cap usage bar, what is covered, how payouts work |
-| Payment | Quote confirmation, UPI payment simulation, activation countdown |
-| Claims | Payout history, summary stats, zero-touch claims explainer |
-| Simulator | Fire triggers, see mock API responses, watch payouts generate |
-| Profile | Tier badge, score breakdown, financial summary, account details |
-| Notifications | Payout alerts and disruption notifications |
+Before getting into what to add, here is an honest read of what already exists and what is missing.
 
----
+**Already working:**
+- Trigger engine fires correctly — weather, AQI, platform blackout, social disruption all validated
+- Payout engine processes intervals in the background with shift overlap, weekly cap, and activation window checks
+- One fraud check exists: `RiderActivityLog` — rider must have a logged activity in the zone within 30 minutes of the trigger
+- Admin dashboard endpoint returns loss ratio, active disruptions, recent payouts
+- Rider dashboard returns R-score, premium comparison, payout history
+- Mock API layer simulates all four external data sources realistically
+- Simulator page lets you fire triggers manually and see results
 
-
-## What This Product Does
-
-India's food delivery riders lose income every time something outside their control hits — a hailstorm, a toxic AQI day, a platform outage, a city bandh. There is no existing system that compensates for this. VERO fixes that.
-
-When a disruption is confirmed through independent third-party data, money goes directly to the rider's UPI wallet in 30-minute intervals. No claim form. No call. No waiting. The rider does nothing — VERO does everything.
+**What is missing or incomplete:**
+- Fraud detection is a single activity-log check — the GPS spoofing, cross-city registration abuse, and coordinated ring detection described in the README are not implemented
+- Zone-level premium differentiation within a city is not applied — a Chennai rider in Adyar and a Chennai rider in T.Nagar pay the same premium because `compute_coverage_and_premium` uses city-level risk, not zone-level risk
+- Payment gateway integration is absent — the Payment page activates a policy directly without any Razorpay or UPI flow
+- Admin dashboard has no predictive analytics — it shows current state only, no next-week forecast
+- Worker dashboard has no "earnings protected" summary — it shows payout history but not a clear "you saved ₹X this week" framing
+- No admin frontend page exists — the `/dashboards/admin/summary` endpoint exists but there is no UI for it
 
 ---
 
-## How to Run
+## 1. Advanced Fraud Detection
 
-Make sure Docker Desktop is running, then from the project root:
+### What the problem actually is
+
+Three distinct fraud vectors need to be addressed:
+
+**Vector 1 — GPS spoofing (fake zone presence)**
+A rider registers in Bengaluru (higher risk multiplier, higher potential payout) but is physically in Hyderabad. They spoof their GPS to appear in a Bengaluru zone during a trigger event.
+
+**Vector 2 — Cross-city registration abuse**
+A rider deliberately registers in a high-risk city zone to get higher coverage, while actually working in a lower-risk city. This is not GPS spoofing — it is registration fraud at onboarding.
+
+**Vector 3 — Coordinated ring (temporal clustering)**
+500 riders in the same zone all trigger payouts within a narrow time window simultaneously, while no actual delivery slowdown is detectable in that zone.
+
+### Approach
+
+**For GPS spoofing and zone presence:**
+
+The current system has one check: `RiderActivityLog` must have an entry for the rider in the zone within 30 minutes. This is the right foundation but it is too easy to fake — a single log entry can be manufactured.
+
+The approach is to make zone presence harder to fake by requiring *behavioral consistency*, not just presence:
+
+- Track `RiderActivityLog` entries over the past 7 days per zone, not just the last 30 minutes
+- A rider who has zero or near-zero historical activity in a zone but suddenly appears during a trigger event is flagged
+- This is a `fraud_score` field added to the payout record — not an outright block, but a flag for review
+- The score is computed as: `(activity_entries_in_zone_last_7d / avg_zone_activity_last_7d)` — a ratio below 0.2 flags the payout
+
+The key insight: you cannot fake a week of delivery history in a zone. A spoofer who just registered or just moved zones has no history. A genuine rider who works that zone every day has plenty.
+
+**For cross-city registration abuse:**
+
+At registration, the rider declares their city. The zone they pick must belong to that city — this is already enforced by the zone picker (zones are filtered by city). The gap is that nothing stops a rider from declaring "Bengaluru" while actually working in Hyderabad.
+
+The approach: when a rider logs activity (the `POST /tracking/activity` call that already exists), record the zone. If a rider's activity logs over 4+ weeks consistently show a different city's zones than their registered city, flag the profile for review. This is a passive detection — it does not block payouts immediately, it surfaces an anomaly.
+
+**For coordinated ring detection:**
+
+The Isolation Forest model described in the README is Phase 2 (requires real training data). For the MVP, a rule-based version is sufficient and demonstrable:
+
+- When a trigger event fires, count how many riders in the zone triggered within the same 15-minute window
+- Compare this to the zone's historical average trigger rate (seeded as a baseline)
+- If the count exceeds 3× the historical average, mark the event as `ring_candidate = true` in `TriggerEvent.event_metadata`
+- Payouts for ring-candidate events are flagged but not blocked — they appear in the admin dashboard under "Fraud Flags"
+
+**What this looks like in the codebase:**
+
+- Add `fraud_score` (Numeric) to the `Payout` model
+- Add `ring_candidate` flag to `TriggerEvent.event_metadata` (already JSONB — no schema change needed)
+- In `payout_engine.py`, compute fraud score per rider before creating the payout record
+- In `trigger_engine.py`, compute ring detection before queuing payouts
+- Admin dashboard endpoint surfaces flagged payouts and ring-candidate events
+
+**Pros:**
+- No GPS hardware required — purely behavioral, works in a demo environment
+- Builds on existing `RiderActivityLog` infrastructure
+- Rule-based ring detection is explainable and demonstrable without ML training data
+- Does not block genuine riders — flags for review, preserving the "honest riders are insulated" promise from the README
+
+**Cons:**
+- Week-1 riders have no history, so the zone consistency check cannot apply to them — they get a neutral fraud score by default
+- Ring detection threshold (3× average) is a heuristic — in production this would be tuned on real data
+- Cross-city detection is passive — it surfaces anomalies after the fact, not at registration time
+
+---
+
+## 2. Zone-Level Premium Differentiation
+
+### What the problem actually is
+
+`compute_coverage_and_premium` in `auth.py` uses `city.default_risk_multiplier` for all riders in a city. But `GeoZone` already has `base_risk_multiplier` per zone. A Chennai rider in Adyar (zone risk 1.25) and a Chennai rider in T.Nagar (zone risk 1.20) pay the same premium. The data is there — it is just not being used.
+
+### Approach
+
+The fix is a one-line change in `compute_coverage_and_premium`: replace `city.default_risk_multiplier` with `zone.base_risk_multiplier` when a zone is available, falling back to city-level when it is not.
 
 ```
-start-and-open.bat
+Risk Multiplier = zone.base_risk_multiplier  (if zone exists)
+               = city.default_risk_multiplier (fallback for new users with no zone)
 ```
 
-This builds and starts all three services (PostgreSQL, backend, frontend) and opens the app at `http://localhost`. The backend API docs are at `http://localhost:8000/docs`.
+This immediately makes premiums zone-specific. A rider in Connaught Place (Delhi, 1.20×) pays differently from a rider in Lajpat Nagar (Delhi, 1.15×). The difference is small but real and demonstrable.
 
-To stop everything:
+**For the cross-city registration fraud vector:** zone-level premiums also make the fraud less attractive. If a rider registers in Bengaluru Indiranagar (1.15×) but works in Hyderabad Central (1.05×), they are paying a higher premium for a zone they do not actually work in — the fraud costs them money rather than saving it.
 
+**What this looks like in the codebase:**
+
+- Modify `compute_coverage_and_premium` in `auth.py` to accept zone and use `zone.base_risk_multiplier`
+- Update all callers: `dashboards.py` (rider dashboard), `policies.py` (quote endpoint), `insurance.py`
+- The zone is already fetched in `dashboards.py` — it just needs to be passed through
+
+**Pros:**
+- Minimal code change — the data model already supports this
+- Immediately visible in the demo: log in as Deepa (Chennai T.Nagar) vs a rider in Adyar and see different premiums
+- Makes the fraud economics worse for cross-city abusers
+
+**Cons:**
+- Week 1–4 riders use city-level defaults per the README spec — zone-level only kicks in from week 5. This means the differentiation is only visible for returning demo riders, not new registrations
+- Zone risk multipliers are currently seeded as static values — in production these would update weekly based on forecast data
+
+---
+
+## 3. Payment Gateway Integration (Razorpay Test Mode)
+
+### What the problem actually is
+
+The Payment page currently calls `POST /policies/purchase` directly. There is no payment step — the policy just activates. For the demo, this needs to show a real payment flow even if no money moves.
+
+### Approach
+
+**Why Razorpay over Stripe or UPI simulator:**
+
+Razorpay has a proper test mode with a JavaScript SDK that works in a browser without any server-side webhook setup. Stripe requires webhook configuration. A raw UPI simulator would be custom-built. Razorpay test mode is the fastest path to a working demo.
+
+**The flow:**
+
+1. Rider clicks "Activate Protection" on the Payment page
+2. Frontend calls `POST /policies/create-order` — backend creates a Razorpay order via the Razorpay API (test keys) and returns `order_id` and `amount`
+3. Frontend opens the Razorpay checkout modal using the Razorpay JS SDK (loaded via CDN in `index.html`)
+4. Rider completes payment in the modal using Razorpay test card/UPI credentials
+5. Razorpay calls `payment.success` handler in the frontend with `razorpay_payment_id`, `razorpay_order_id`, `razorpay_signature`
+6. Frontend calls `POST /policies/verify-payment` with those three values
+7. Backend verifies the HMAC signature using the Razorpay secret key, then activates the policy
+8. Rider lands on dashboard with active policy
+
+**For payouts (simulated):**
+
+Real Razorpay payouts require a business account and KYC. For the demo, the payout engine continues to write `Payout` records with `status = SUCCESS` as it does now — but the dashboard and claims page display these as "Transferred to UPI: {rider.upi_id}" with a mock transaction reference. This is honest simulation — it shows the flow without claiming real money moved.
+
+**What this looks like in the codebase:**
+
+- Add `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` to `.env` (test keys from Razorpay dashboard — free to create)
+- Add `razorpay` Python package to `requirements.txt`
+- Add two new endpoints to `policies.py`: `POST /policies/create-order` and `POST /policies/verify-payment`
+- Modify `Payment.jsx` to load Razorpay SDK and open the checkout modal instead of calling purchase directly
+- Payout display in `Claims.jsx` adds a mock UPI reference number alongside each payout record
+
+**Pros:**
+- Razorpay test mode is free, requires no real money, and produces a realistic checkout experience
+- HMAC signature verification is real cryptographic validation — not just a mock
+- The flow is identical to production — only the keys change
+- Demonstrates the full payment lifecycle to evaluators
+
+**Cons:**
+- Requires a Razorpay account (free to create, takes 5 minutes)
+- Test mode checkout modal looks slightly different from production (has a "Test Mode" banner)
+- Razorpay SDK loads from CDN — requires internet connection during demo
+- Payout side remains simulated — cannot demonstrate real UPI transfers without business KYC
+
+---
+
+## 4. Live Trigger Integration (Real API Calls)
+
+### What the problem actually is
+
+All four trigger types currently use `mock_api.py` — static hardcoded data. The README specifies OpenWeatherMap, Tomorrow.io, IQAir, and DownDetector as real sources. For the demo, at least one trigger type should pull live data.
+
+### Approach
+
+**Which trigger to make live first:**
+
+Weather (OpenWeatherMap) is the easiest — free tier, no approval required, returns data for Indian cities immediately. AQI via IQAir also has a free tier. Platform outage (DownDetector) requires scraping which is fragile. Social disruption (NewsAPI) requires a key but is straightforward.
+
+**Recommended: Weather + AQI live, Platform + Social remain mock**
+
+OpenWeatherMap free tier gives current weather for any city. The call is:
 ```
-stop.bat
+GET https://api.openweathermap.org/data/2.5/weather?q={city}&appid={key}
 ```
+This returns rainfall (in `rain.1h`), wind speed, and weather condition — exactly what the trigger engine needs.
 
-On first run, the backend automatically seeds the database with cities, zones, and five demo riders before starting the server. No manual setup needed.
-
----
-
-## Demo Login Credentials
-
-For the demo, use any of these pre-seeded returning riders. These accounts already have weeks of delivery history in the database, which is what drives the ML-based premium and coverage differences you will see between them.
-
-| Name | Phone | Password | City | Platform | Profile |
-|---|---|---|---|---|---|
-| Arjun Mehta | +919000000001 | vero1234 | Mumbai | Zomato | High performer |
-| Priya Nair | +919000000002 | vero1234 | Bengaluru | Swiggy | Average performer |
-| Ravi Kumar | +919000000003 | vero1234 | Delhi | Zomato | Low performer |
-| Deepa Krishnan | +919000000004 | vero1234 | Chennai | Swiggy | Mid-high performer |
-| Suresh Babu | +919000000005 | vero1234 | Hyderabad | Zomato | Recovering performer |
-
-Log in with any of these and you will immediately see different premium amounts and coverage percentages — that difference is the ML engine at work.
-
----
-
-## Full Workflow
-
-### New User Path
-
-A brand new rider has no delivery history. The system handles this by:
-
-- Using city-level baseline income as the earnings reference
-- Applying a city-level default risk multiplier (Delhi is highest at 1.30×, other cities lower)
-- Fixing coverage at 40% — enough to be meaningful, not enough to make joining right before a bad week profitable
-- Enforcing a 24-hour activation window — a rider who reads tonight's bandh announcement and buys immediately cannot claim against it tomorrow
-
-The new user flow in the app is three steps:
-
-**Step 1 — Phone**
-Enter a 10-digit number. The system sends a 6-digit OTP. In demo mode, the OTP appears as a floating toast notification on screen so you do not need a real SMS.
-
-**Step 2 — Verify**
-Enter the OTP. Once verified, the phone number is confirmed.
-
-**Step 3 — Details**
-Fill in name, password, UPI ID, platform (Zomato or Swiggy), city, and shift hours. Submit — account is created and the rider lands on the dashboard.
-
----
-
-### Returning User Path (Demo Focus)
-
-From week 3 onward, the system has enough delivery data to personalise everything. This is where the ML engine takes over.
-
-The backend tracks three dimensions of each rider's delivery behaviour across weeks:
-
-- **Availability** — how many hours they were active relative to their zone peers
-- **Efficiency** — how many orders they completed relative to their zone peers
-- **Completion rate** — what fraction of accepted orders they actually delivered
-
-These three signals are fed into the ML model, which produces a single score between 0 and 1. That score directly controls two things: how much the rider pays, and how much they are covered for.
-
-**The outcome:**
-- A high-scoring rider (consistent, efficient, high completion) pays a lower premium and gets higher coverage — up to 65%
-- A low-scoring rider pays more and gets less — floor is 40% coverage
-- The difference between the best and worst rider in the demo is visible the moment you log in
-
-This is not a flat discount. The ML model recalculates every week based on fresh data. A rider who improves their behaviour moves up. A rider who becomes inconsistent moves down.
-
-**Profile page** shows the score breakdown visually — three mini progress bars for Availability, Efficiency, and Completion, plus a circular gauge for the overall score. Riders are also assigned a tier (Bronze → Silver → Gold → Elite) based on their score, with the benefits of each tier shown clearly.
-
----
-
-## The Four Triggers
-
-VERO monitors four types of disruption simultaneously. Each one uses a specific independent data source — the rider cannot influence any of them.
-
-### 1. Heavy Rain / Hailstorm / Extreme Heat
-Source: OpenWeatherMap + Tomorrow.io
-
-- Heavy rain fires when rainfall exceeds 35mm/hr sustained for at least 1 hour
-- Hailstorm fires immediately on confirmation — no duration requirement, riding in hail is immediately dangerous
-- Extreme heat fires when temperature exceeds 40°C sustained for 2 hours
-
-### 2. Toxic Air (AQI)
-Source: IQAir / CPCB government sensor network
-
-Fires when AQI exceeds 300 in the rider's active zone, sustained for more than 2 hours during their shift. This is the Delhi winter scenario — hazardous air that cuts trip completion rates significantly.
-
-### 3. Platform Outage (Zomato / Swiggy — monitored separately)
-Source: DownDetector + custom uptime scraper
-
-Fires when a platform is down for more than 45 continuous minutes AND the outage falls within peak hours (12:00–14:30 or 19:00–22:30). Off-peak outages do not trigger — a 3am outage does not affect earnings. Zomato and Swiggy are monitored independently.
-
-### 4. Bandh / Civic Shutdown
-Source: NewsAPI.org + Twitter/X trending signals
-
-This one is proactive. The system reads signals the night before — government notices, news articles, trending hashtags — and scores them into a confidence percentage. When confidence crosses 75% AND restaurant availability in the zone drops above 80% AND the rider's GPS confirms they are in the affected zone, payouts begin. The rider is notified the night before, not after they have already lost the income.
-
-**Multi-trigger rule:** If two triggers are active at the same time for the same rider, only the one producing the highest payout fires. Payouts are never stacked.
-
----
-
-## Payout Logic
-
-Every 30 minutes while a disruption is active:
-
+IQAir free tier gives AQI for Indian cities:
 ```
-Payout per interval = 0.5 hours × Verified Hourly Income × Coverage %
+GET https://api.airvisual.com/v2/city?city={city}&state={state}&country=India&key={key}
 ```
 
-- Verified hourly income comes from city baseline for new users, or from the rider's own verified earnings from week 3 onward
-- Coverage % is 40% fixed for new users, or 40–65% based on the ML score for returning users
-- A weekly cap applies — Coverage % × Verified Weekly Income. Once the cap is exhausted, payouts stop for that week
-- An SMS is sent at the first interval with a trigger event ID. Subsequent intervals within the same event are processed silently
+**The integration approach:**
+
+- Add `OPENWEATHER_API_KEY` and `IQAIR_API_KEY` to `.env`
+- In `mock_api.py`, add a `USE_LIVE_APIS` flag (read from env)
+- When `USE_LIVE_APIS=true`, `fetch_weather` and `fetch_aqi` make real HTTP calls; when false, they return the existing mock data
+- The trigger engine does not change — it consumes the same dict structure regardless of source
+- If the live API call fails (network error, rate limit), fall back to mock data silently
+
+This means the demo works offline (mock mode) and online (live mode) with a single env variable toggle.
+
+**For DownDetector (platform outage):**
+
+DownDetector does not have a public API. The README mentions a "custom scraper." For the demo, the mock data is sufficient and honest — the README explicitly says this is the source. A real scraper would parse the DownDetector status page HTML, which is fragile and not worth building for a hackathon.
+
+**Pros:**
+- Live weather and AQI data makes the demo genuinely real — if it is raining in Delhi during the demo, the trigger fires on real data
+- Fallback to mock means the demo never breaks due to API issues
+- Free tier keys are sufficient for demo volume
+- No change to trigger engine architecture
+
+**Cons:**
+- OpenWeatherMap free tier has a 60 calls/minute limit — fine for demo, not for production
+- Live data means trigger thresholds may not be met during the demo (it might not be raining) — mock mode remains necessary for reliable demos
+- IQAir free tier is 10,000 calls/month — sufficient but requires monitoring
+- Zone-level granularity from OpenWeatherMap is city-level, not pin-code level — the zone-specific data in mock_api.py is more granular than what the free API provides
 
 ---
 
-## Registration Process (What the Evaluator Sees)
+## 5. Intelligent Dashboard
 
-1. Open `http://localhost`
-2. Tap "Get covered — ₹50/week" or "Create free account"
-3. Enter a phone number → OTP appears as a toast → enter it → verify
-4. Fill in name, password, UPI ID, platform, city, shift hours → submit
-5. Land on dashboard — quote is shown immediately with premium and coverage for the coming week
+### Worker Dashboard — "Earnings Protected"
 
----
+**What is missing:**
 
-## Insurance Policy Management (What the Evaluator Sees)
+The current rider dashboard shows payout history as a list of amounts. It does not frame this as "income protected" — the core value proposition. A rider should see: "This week, VERO protected ₹162 of your income."
 
-1. Log in with any demo account
-2. Dashboard shows current policy status — coverage %, premium paid, weekly cap, cap used so far
-3. Navigate to "My Policy" for full details — what is covered, how payouts work, policy metadata
-4. If no policy is active, the quote is shown with a single "Activate Protection" button
-5. Payment screen shows the premium, coverage %, and weekly cap — tap to activate
-6. In demo mode, the policy activates in 20 seconds (production enforces a 24-hour window)
+**What to add:**
 
----
+- "Earnings Protected This Week" — sum of payouts in the current policy week, displayed prominently as a hero number
+- "Total Saved Since Joining" — cumulative payouts received vs cumulative premiums paid, showing net benefit
+- "Coverage Utilization" — cap used vs cap available, already partially shown but needs clearer framing
+- "Your Zone Risk This Week" — the risk multiplier for their zone, with a plain-language explanation ("Your zone has a 1.25× risk rating — disruptions are more likely here")
+- "Next Disruption Probability" — a simple forecast based on the zone's risk multiplier and any upcoming weather signals (this can be rule-based: high multiplier + bad forecast week = "High" probability)
 
-## Dynamic Premium Calculation (What the Evaluator Sees)
+All of this data is already available from the existing `/dashboards/rider/me` endpoint — it is a frontend framing change, not a backend change.
 
-Log in with different demo accounts and compare the numbers on the dashboard and payment screen:
+### Admin Dashboard — Loss Ratios + Predictive Analytics
 
-- Arjun Mehta (Mumbai, high performer) — lowest premium, highest coverage
-- Ravi Kumar (Delhi, low performer) — highest premium, lowest coverage
-- Priya Nair (Bengaluru, average) — mid-range on both
+**What is missing:**
 
-The difference is entirely driven by the ML model reading each rider's delivery history. Same city, same platform, same week — different price, different coverage. That is the personalisation working.
+The admin endpoint exists (`/dashboards/admin/summary`) but there is no frontend page for it. The endpoint returns loss ratio, active disruptions, and recent payouts — but no predictive analytics.
 
-The dashboard also shows a "Next Week Risk Forecast" card — a risk bar that reflects the zone's environmental, AQI, and social disruption forecast for the coming week. High-risk weeks push the base rate up for everyone in that zone.
+**What to add to the backend:**
 
----
+A new endpoint `GET /dashboards/admin/predictive` that returns:
 
-## Claims Management (What the Evaluator Sees)
+- Next week's expected claim volume per zone — based on zone risk multiplier × number of active policies in that zone × historical trigger frequency
+- Expected loss ratio for next week — (expected claims) / (expected premium revenue)
+- Zones at highest risk next week — ranked by expected claim volume
+- Rider segments most likely to claim — new users (week 1–2, fixed 40% coverage) vs returning users (higher coverage, more history)
 
-1. Log in with a demo account that has an active policy
-2. Navigate to "Claims & Payouts"
-3. Summary cards show total received, number of payouts, and remaining cap
-4. Payout history lists each transaction with trigger type, timestamp, amount, and status
-5. To generate a payout, go to the Trigger Simulator
+This is deterministic math, not ML — it uses the existing zone risk multipliers and policy counts. The formula:
 
----
+```
+Expected claims next week (zone Z) =
+  active_policies_in_zone(Z)
+  × zone_risk_multiplier(Z)
+  × historical_trigger_rate(Z)   ← seeded as a baseline per zone
+  × avg_payout_per_event(Z)      ← derived from existing payout history
+```
 
-## Trigger Simulator
+**What to add to the frontend:**
 
-The simulator is the demo tool for showing the automated trigger and payout system live. Access it from the dashboard via the "Simulate" button (yellow, top right).
+A new `/admin` route (no auth required for demo — admin login is out of scope) with:
 
-**How to use it:**
+- Network health panel: total riders, active policies, loss ratio gauge (target 0.40–0.60)
+- Live disruptions: active trigger events with zone, type, riders affected
+- Fraud flags: payouts with fraud_score above threshold, ring-candidate events
+- Predictive panel: next week's expected claims by zone, risk heatmap (text-based for demo — a table ranked by risk, not a map)
+- Premium vs payout chart: weekly bars showing revenue collected vs claims paid (using existing payout and policy data)
 
-1. Confirm the Zone ID (pre-filled from your registered zone)
-2. Select a trigger type from the dropdown — Heavy Rain, Hailstorm, Extreme Heat, Toxic Air, Zomato Outage, Swiggy Outage, or Bandh
-3. Enter a threshold value above the minimum (the UI shows green/red feedback in real time)
-4. Set a start and end time for the disruption window
-5. Optionally add up to 3 triggers to fire simultaneously — the multi-trigger resolution rule will show which one wins
-6. Tap "Fire Trigger"
+**Pros:**
+- Worker dashboard changes are frontend-only — no backend work needed
+- Admin predictive analytics uses deterministic math — no ML training data required
+- Loss ratio is already computed in the backend — just needs to be surfaced in a UI
+- Fraud flags surface the fraud detection work from section 1 — the two features reinforce each other
 
-**What happens:**
-
-- The backend calls the mock API for that trigger type (simulating OpenWeatherMap, IQAir, DownDetector, or NewsAPI)
-- The threshold is validated against the trigger rules
-- If passed, a trigger event is created, eligible riders in the zone are identified, and payouts are queued as a background task
-- The result card shows: overlap hours, interval count, estimated payout, and the raw mock API response (source, readings, threshold check)
-- Navigate to Claims & Payouts — the new payout appears in the history
-
-**For platform outage triggers:** the start time must fall within peak hours (12:00–14:30 or 19:00–22:30) or the trigger will be rejected. This is by design.
-
-**For bandh triggers:** confidence must exceed 75% AND restaurant closure must exceed 80%. Zone 1 (Chennai/Adyar) and Zone 6 (Delhi/Connaught Place) have pre-configured social signal data that will pass this threshold.
+**Cons:**
+- Predictive analytics accuracy depends on the quality of seeded baseline trigger rates — with synthetic data, the numbers will look plausible but not calibrated
+- Admin dashboard has no authentication — acceptable for a hackathon demo, not for production
+- "Next disruption probability" on the worker dashboard is a risk multiplier proxy, not a real forecast — it will not change day-to-day without live weather integration
 
 ---
 
-## What the ML Engine Actually Does
+## Workflow Summary
 
-The premium and coverage numbers are not hardcoded per rider. Every time a quote is requested, the backend:
+Here is the order to build these in, from least to most complex:
 
-1. Pulls the rider's last 4 weeks of performance history from the database
-2. Computes their score from the three delivery behaviour dimensions
-3. Applies that score to the base rate formula: `Premium = Base Rate × Zone Risk × (1.5 − Score)`
-4. Computes coverage: `Coverage = 40% + (25% × Score)`, capped at 65%
+### Step 1 — Zone-level premiums (30 minutes)
+Fix `compute_coverage_and_premium` to use zone risk multiplier. Update callers. Immediately visible in demo — different premiums for different zones in the same city.
 
-A rider with a score of 1.0 pays 0.5× the base rate and gets 65% coverage.
-A rider with a score of 0.0 pays 1.5× the base rate and gets 40% coverage.
+### Step 2 — Worker dashboard framing (1–2 hours)
+Add "Earnings Protected This Week" and "Total Saved" to the existing Dashboard.jsx. All data is already in the API response. Pure frontend work.
 
-The zone risk multiplier is layered on top — a rider in a historically high-disruption zone pays more regardless of their personal score. From week 5 onward, city-level defaults are replaced by pin-code level zone history specific to the rider's registered delivery zones.
+### Step 3 — Fraud detection (2–3 hours)
+Add `fraud_score` to Payout model. Add zone consistency check in payout_engine.py. Add ring detection in trigger_engine.py. Surface flags in admin endpoint.
+
+### Step 4 — Admin dashboard frontend (2–3 hours)
+New `/admin` route in React. Calls existing `/dashboards/admin/summary`. Add predictive endpoint to backend. Display loss ratio, fraud flags, predictive table.
+
+### Step 5 — Razorpay payment integration (2–3 hours)
+Add Razorpay keys to env. Add create-order and verify-payment endpoints. Modify Payment.jsx to open Razorpay modal. Add mock UPI reference to payout display.
+
+### Step 6 — Live API integration (1–2 hours, optional)
+Add `USE_LIVE_APIS` flag. Implement live fetch_weather and fetch_aqi with fallback. Test with real keys.
 
 ---
 
-## Fraud Prevention (Built Into the Design)
+## What to Prioritize for the Demo
 
-- No claim form means nothing to fake — triggers fire from independent data the rider cannot influence
-- 24-hour activation window blocks last-minute purchases before known disruptions
-- Platform outage trigger requires a logged delivery attempt in the last 30 minutes — someone who opened the app purely to collect a payout is ineligible
-- GPS zone matching — rider must be in their registered zone when the disruption fires
-- Personal loss ratio monitor — if total payouts exceed 1.8× total premiums paid, a compounding surcharge applies to the following week's premium
-- Duplicate trigger blocking — the same event ID cannot produce duplicate payouts under the same policy
+If time is limited, the order of impact for evaluators is:
 
+1. **Zone-level premiums** — immediately visible, zero risk, proves the system is genuinely personalized
+2. **Razorpay payment** — the most visible "wow" moment for evaluators — a real checkout modal
+3. **Admin dashboard frontend** — loss ratio and fraud flags are exactly what the theme asks for
+4. **Worker dashboard framing** — "earnings protected" is the emotional core of the product
+5. **Fraud detection** — important for the theme but invisible unless you look at the data
+6. **Live APIs** — impressive but risky if the demo environment has no internet
 
+---
+
+## Risks and Mitigations
+
+| Risk | Likelihood | Mitigation |
+|---|---|---|
+| Razorpay test mode checkout fails during demo | Low | Keep direct-purchase fallback in Payment.jsx behind a toggle |
+| Live API rate limit hit during demo | Medium | `USE_LIVE_APIS=false` by default; enable only when demonstrating |
+| Fraud score computation slows down payout processing | Low | Fraud score is a simple ratio — microseconds to compute |
+| Admin dashboard has no auth — evaluator concern | Low | Add a note in the UI: "Admin view — demo only, no auth required" |
+| Zone risk multipliers are static — evaluator asks why they don't change | Medium | Explain the Sunday recalculation design; show the multiplier values differ by zone |
+| Predictive analytics numbers look made up | Medium | Show the formula in the UI tooltip — deterministic math is more credible than a black box |
