@@ -31,7 +31,7 @@
   * Real-Time Fraud Shielding: Every single payout request is passed through an unsupervised anomaly detection model before release.
   * Dynamic Micro-Premiums: Rider behavioral telemetry continuously shapes their unique risk premium and coverage cap.
 * Suggested Visual: An elegant, linear architecture flowchart showing the lifecycle: External Disruption → Oracle Validation → Real-Time ML Fraud Screen → Instant UPI Payout.
-* Speaker Notes: VERO SafeGuard completely removes the friction of legacy insurance. Instead of investigating subjective claims, our system listens to verifiable external endpoints. If a disruption meets our mathematical threshold, our engine isolates affected riders, screens them algorithmically for fraud, and executes real-time payouts via UPI. It is insurance executed as pure logic.
+* Speaker Notes: VERO SafeGuard completely removes the friction of legacy insurance. Instead of investigating subjective claims, our system listens to verifiable external endpoints. If a disruption meets our mathematical threshold, our engine isolates affected riders, screens them algorithmically for fraud, and executes real-time payouts via UPI. It is insurance executed as pure logic, we avoid manual claims and prefer the automatic payouts.
 
 ---
 
