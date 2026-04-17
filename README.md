@@ -13,5 +13,5 @@
 </p>
 
 > **Setup Instructions:** For setup in your local system, please visit the **[SETUP_GUIDE.md](./SETUP_GUIDE.md)**.
-
+> **Final Pitch Deck:** View the complete ML system, fraud infrastructure, and business viability of the weekly pricing model — [Open Pitch Deck](<YOUR_GOOGLE_DRIVE_LINK>)
 ---
